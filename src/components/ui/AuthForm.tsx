@@ -7,27 +7,6 @@ import { authApi, setSession } from "../../api";
 
 const roles: Role[] = ["Founder", "Investor", "Business", "Mentor", "Student", "Professional"];
 
-type JoiningPayment = { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string };
-type CheckoutOptions = {
-  key: string; amount: number; currency: string; name: string; description: string; order_id: string;
-  prefill: { email: string; name: string };
-  handler: (response: JoiningPayment) => void | Promise<void>;
-  modal: { ondismiss: () => void };
-};
-declare global { interface Window { Razorpay?: new (options: CheckoutOptions) => { open: () => void; on: (event: string, callback: (response: any) => void) => void } } }
-
-async function loadRazorpay() {
-  if (window.Razorpay) return;
-  await new Promise<void>((resolve, reject) => {
-    const script = document.createElement("script");
-    script.src = "https://checkout.razorpay.com/v1/checkout.js";
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error("Payment checkout could not load. Please try again."));
-    document.body.appendChild(script);
-  });
-  if (!window.Razorpay) throw new Error("Payment checkout is unavailable.");
-}
-
 export function AuthForm({ reason, onDone, compact = false }: { reason?: string; onDone?: () => void; compact?: boolean }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -45,42 +24,16 @@ export function AuthForm({ reason, onDone, compact = false }: { reason?: string;
     setSubmitting(true);
     try {
       if (mode === "signup") {
-        const order = await authApi.signupOrder(email.trim());
-        await loadRazorpay();
-        await new Promise<void>((resolve) => {
-          const checkout = new window.Razorpay!({
-            key: order.keyId, amount: order.amount, currency: order.currency, order_id: order.orderId,
-            name: "WS Hub", description: "One-time account joining fee · ₹2",
-            prefill: { email: email.trim(), name: name.trim() },
-            modal: { ondismiss: () => { setSubmitting(false); resolve(); } },
-            handler: async (payment) => {
-              try {
-                const signedUp = await authApi.signup({
-                  email: email.trim(), password, fullName: name.trim(),
-                  accountType: role === "Business" ? "business_owner" : "user",
-                  memberType: ({ Founder: "founder", Business: "business", Investor: "investor", Mentor: "mentor", Student: "student", Professional: "professional" } as const)[role],
-                  ...payment,
-                });
-                setSession(null);
-                const confirmation = signedUp.emailConfirmationRequired ? " Confirm your email using the link we sent." : "";
-                setNotice(`₹2 joining fee received. Your account is waiting for administrator approval.${confirmation}`);
-                setMode("signin");
-                toast("Payment received. Your account is awaiting approval.", "success");
-              } catch (reason) {
-                setError(reason instanceof Error ? reason.message : "Could not create your account after payment.");
-              } finally {
-                setSubmitting(false);
-                resolve();
-              }
-            },
-          });
-          checkout.on("payment.failed", (response) => {
-            setError(response?.error?.description || "Payment was not completed. No account was created.");
-            setSubmitting(false);
-            resolve();
-          });
-          checkout.open();
+        const signedUp = await authApi.signup({
+          email: email.trim(), password, fullName: name.trim(),
+          accountType: role === "Business" ? "business_owner" : "user",
+          memberType: ({ Founder: "founder", Business: "business", Investor: "investor", Mentor: "mentor", Student: "student", Professional: "professional" } as const)[role],
         });
+        setSession(null);
+        const confirmation = signedUp.emailConfirmationRequired ? " Confirm your email using the link we sent." : "";
+        setNotice(`Your account is waiting for administrator approval.${confirmation}`);
+        setMode("signin");
+        toast("Account created. It is awaiting approval.", "success");
         return;
       }
       const result = await authApi.login(email.trim(), password);
@@ -142,8 +95,8 @@ export function AuthForm({ reason, onDone, compact = false }: { reason?: string;
       )}
       {error && <p className="rounded-md bg-red-50 px-3 py-2 text-[12px] font-semibold text-red-700">{error}</p>}
       {notice && <p role="status" className="rounded-md bg-emerald-50 px-3 py-2 text-[12px] font-medium text-emerald-800">{notice}</p>}
-      <PrimaryBtn>{submitting ? "Please wait..." : mode === "signup" ? "Pay ₹2 & create account" : "Sign in & continue"}</PrimaryBtn>
-      <p className="text-center text-[11px] text-slate-500">{mode === "signup" ? "One-time ₹2 joining fee. Account access starts after administrator approval." : "By continuing you agree to the WS Hub terms."}</p>
+      <PrimaryBtn>{submitting ? "Please wait..." : mode === "signup" ? "Create account" : "Sign in & continue"}</PrimaryBtn>
+      <p className="text-center text-[11px] text-slate-500">{mode === "signup" ? "Account access starts after administrator approval." : "By continuing you agree to the WS Hub terms."}</p>
     </form>
   );
 }

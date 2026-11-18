@@ -98,8 +98,7 @@ export async function apiRequest<T>(
 }
 
 export const authApi = {
-  signupOrder: (email: string) => apiRequest<{ orderId: string; amount: number; currency: string; keyId: string }>("/api/auth/signup/order", { method: "POST", body: JSON.stringify({ email }), auth: false }),
-  signup: (body: { email: string; password: string; fullName: string; phone?: string; accountType?: "user" | "business_owner"; memberType?: "founder" | "business" | "investor" | "mentor" | "student" | "professional"; razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) =>
+  signup: (body: { email: string; password: string; fullName: string; phone?: string; accountType?: "user" | "business_owner"; memberType?: "founder" | "business" | "investor" | "mentor" | "student" | "professional" }) =>
     apiRequest<{ user: { id: string; email: string }; session: Session | null; emailConfirmationRequired: boolean }>("/api/auth/signup", { method: "POST", body: JSON.stringify(body), auth: false }),
   login: (email: string, password: string) =>
     apiRequest<{ user: { id: string; email: string }; session: Session }>("/api/auth/login", { method: "POST", body: JSON.stringify({ email, password }), auth: false }),
