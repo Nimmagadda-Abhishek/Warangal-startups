@@ -19,11 +19,12 @@ export function LogoBadge({ b, size = "md" }: { b: BusinessRecord; size?: "sm" |
   const dims = { sm: "h-10 w-10 text-xs", md: "h-14 w-14 text-sm", lg: "h-20 w-20 text-lg", xl: "h-24 w-24 text-xl sm:h-28 sm:w-28 sm:text-2xl" }[size];
   return (
     <span
-      className={cn("flex shrink-0 items-center justify-center rounded-full font-black tracking-tight ring-4 ring-white shadow-md", dims)}
+      className={cn("relative flex shrink-0 items-center justify-center overflow-hidden rounded-full font-black tracking-tight ring-4 ring-white shadow-md", dims)}
       style={{ background: b.logo.bg, color: b.logo.fg }}
       aria-hidden="true"
     >
-      {b.logo.initials}
+      <span>{b.logo.initials}</span>
+      {b.logoUrl && <img src={b.logoUrl} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover" onError={(event) => { event.currentTarget.hidden = true; }} />}
     </span>
   );
 }

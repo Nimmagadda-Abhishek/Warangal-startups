@@ -73,6 +73,7 @@ export interface BusinessRecord {
     instagram: string;
   };
   cover: string;
+  logoUrl?: string;
   logo: { initials: string; bg: string; fg: string };
 }
 

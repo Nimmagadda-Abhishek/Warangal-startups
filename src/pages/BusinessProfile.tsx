@@ -127,7 +127,8 @@ export default function BusinessProfile() {
           instagram: b.social_links?.instagram,
           linkedin: b.social_links?.linkedin,
         },
-        cover: b.cover_url || "/images/hero.jpg",
+        cover: b.cover_url || b.coverUrl || "/images/hero.jpg",
+        logoUrl: b.logo_url || b.logoUrl || undefined,
         logo: { initials: b.name?.slice(0, 2).toUpperCase() || "WS", bg: "#0f2a4a", fg: "#ffffff" },
       });
     }).catch(() => setApiBusiness(null)).finally(() => setProfileLoading(false));
@@ -223,8 +224,8 @@ export default function BusinessProfile() {
   return (
     <div className="page-in pb-20 lg:pb-0">
       {/* Cover */}
-      <div className="relative h-[220px] overflow-hidden bg-navy-900 sm:h-[280px] lg:h-[320px]">
-        <img src={b.cover} alt="" className="ken-burns h-full w-full object-cover" />
+      <div className="relative z-0 isolate h-[220px] overflow-hidden bg-navy-900 sm:h-[280px] lg:h-[320px]">
+        <img src={b.cover} alt="" className="ken-burns h-full w-full object-cover" onError={(event) => { if (!event.currentTarget.src.endsWith("/images/hero.jpg")) event.currentTarget.src = "/images/hero.jpg"; }} />
         <div className="absolute inset-0 bg-gradient-to-t from-navy-950/85 via-navy-950/20 to-navy-950/30" />
         <div className="absolute inset-x-0 top-0">
           <div className="mx-auto max-w-[1280px] px-4 pt-4 sm:px-6 lg:px-8">
@@ -247,7 +248,7 @@ export default function BusinessProfile() {
       </div>
 
       {/* Header */}
-      <div className="mx-auto max-w-[1280px] px-4 sm:px-6 lg:px-8">
+      <div className="relative z-10 mx-auto max-w-[1280px] px-4 sm:px-6 lg:px-8">
         <div className="-mt-12 rounded-xl border border-line bg-white p-4 shadow-[var(--shadow-card)] sm:-mt-14 sm:p-6">
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
