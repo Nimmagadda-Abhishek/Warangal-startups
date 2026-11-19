@@ -1,0 +1,1 @@
+{"$schema":"https://openapi.vercel.sh/vercel.json","rewrites":[{"source":"/share/business/:slug","destination":"https://wsh-gadn.onrender.com/api/share/business/:slug"}]}

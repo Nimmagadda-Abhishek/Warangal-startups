@@ -150,7 +150,7 @@ export function Footer() {
         </Reveal>
 
         <div className="mt-8 flex flex-col items-start justify-between gap-2 border-t border-line pt-4 text-[11px] text-slate-600 sm:flex-row sm:items-center">
-          <p>© 2026 WS Hub. All rights reserved.</p>
+          <p>© 2026 WS Hub. All rights reserved.</p><p>Developed by <a href="https://abhishek-nimmagadda.vercel.app/" target="_blank" rel="noopener noreferrer" className="font-semibold text-navy-700 underline-offset-2 hover:text-navy-900 hover:underline">Abhishek Nimmagadda</a></p>
           <p className="inline-flex items-center gap-1.5">
             Proudly for Warangal <Heart className="h-3.5 w-3.5 text-red-500" fill="currentColor" strokeWidth={0} />
           </p>

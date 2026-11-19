@@ -18,7 +18,8 @@ export interface Session {
   token_type: string;
 }
 
-const API_BASE = (import.meta.env.VITE_API_URL || "http://localhost:4000").replace(/\/$/, "");
+const API_BASE = (import.meta.env.VITE_API_URL || "https://wsh-gadn.onrender.com").replace(/\/$/, "");
+const SITE_BASE = (import.meta.env.VITE_SITE_URL || 'https://warangal-startups.vercel.app').replace(/\/$/, '');
 const TOKEN_KEY = "wshub:access_token";
 const REFRESH_KEY = "wshub:refresh_token";
 
@@ -147,6 +148,7 @@ export const profileApi = {
 };
 
 export const businessApi = {
+  shareUrl: (slug: string) => `${SITE_BASE}/share/business/${encodeURIComponent(slug)}`,
   list: (params: Record<string, string | number | undefined> = {}) => {
     const query = new URLSearchParams();
     Object.entries(params).forEach(([key, value]) => value !== undefined && value !== "" && query.set(key, String(value)));
@@ -168,6 +170,10 @@ export const businessApi = {
   uploadCover: (id: string, file: File) => {
     const body = new FormData(); body.append("file", file);
     return apiRequest<any>(`/api/businesses/${id}/cover`, { method: "POST", body });
+  },
+  uploadPortfolioMedia: (id: string, kind: "product" | "gallery", file: File) => {
+    const body = new FormData(); body.append("file", file);
+    return apiRequest<{ url: string }>(`/api/businesses/${id}/portfolio-media?kind=${kind}`, { method: "POST", body });
   },
   services: {
     list: (id: string) => apiRequest<any[]>(`/api/businesses/${id}/services`, { auth: false }),

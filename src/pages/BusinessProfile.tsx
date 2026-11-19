@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { createPortal } from "react-dom";
-import { Link, Navigate, useParams } from "react-router-dom";
+import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import {
   Award,
   BadgeCheck,
@@ -10,6 +10,7 @@ import {
   ChevronRight,
   Clock,
   ExternalLink,
+  Download,
   Eye,
   Flag,
   Globe,
@@ -81,15 +82,22 @@ function SectionCard({ id, title, subtitle, children }: { id: string; title: str
 
 export default function BusinessProfile() {
   const { slug = "" } = useParams();
+  const navigate = useNavigate();
   useTrackView("business:" + slug);
   const [apiBusiness, setApiBusiness] = useState<any>(null);
   const [profileLoading, setProfileLoading] = useState(true);
   useEffect(() => {
     setProfileLoading(true);
-    businessApi.get(slug).then((raw: any) => {
+    businessApi.get(slug).then(async (raw: any) => {
       if (!raw) throw new Error("Business not found");
       const b = raw?.business ?? raw.data?.data ?? raw.data ?? raw;
+      let serviceRows = Array.isArray(b.services) ? b.services : [];
+      if (serviceRows.length === 0 && b.id) {
+        const response: any = await businessApi.services.list(b.id).catch(() => []);
+        serviceRows = Array.isArray(response) ? response : Array.isArray(response?.data) ? response.data : Array.isArray(response?.data?.data) ? response.data.data : [];
+      }
       setApiBusiness({
+        id: b.id,
         slug: b.slug,
         name: b.name,
         category: b.category?.name || "Business",
@@ -98,13 +106,13 @@ export default function BusinessProfile() {
         area: b.address || b.city || "",
         tagline: b.description || "",
         description: b.description || "",
-        mission: "",
-        vision: "",
+        mission: b.mission || "This business has not added a mission statement yet.",
+        vision: b.vision || "This business has not added a vision statement yet.",
         founder: b.owner?.full_name || "",
-        employees: "",
-        established: 0,
+        employees: b.employee_count == null ? "Not listed" : String(b.employee_count),
+        established: b.established_year == null ? null : Number(b.established_year),
         hours: "",
-        businessType: "Large Enterprise",
+        businessType: b.listing_type === "startup" ? "Startup" : "SME",
         membership: b.plan_code || "Free",
         verified: Boolean(b.is_verified),
         rating: Number(b.avg_rating || 0),
@@ -113,18 +121,18 @@ export default function BusinessProfile() {
         addedAt: b.created_at || "",
         verifiedAt: "",
         tags: b.tags || [],
-        products: [],
-        services: b.services || [],
-        gallery: [],
+        products: Array.isArray(b.products) ? b.products : [],
+        services: serviceRows.filter((service: any) => service.is_active !== false && service.isActive !== false).map((service: any) => ({ name: service.name || service.title || "Service", description: service.description || service.details || "", price: service.price, currency: service.currency || "INR" })),
+        gallery: Array.isArray(b.gallery) ? b.gallery : [],
         achievements: [],
-        reviewList: b.recentReviews || [],
+        reviewList: (b.recentReviews || []).map((review: any) => ({ name: review.reviewer?.full_name || "WS Hub member", role: "Customer", date: new Date(review.created_at).toLocaleDateString("en-IN"), rating: Number(review.rating), text: review.comment || "", helpful: 0, id: review.id })),
         contact: {
           phone: b.phone || "",
           whatsapp: b.phone || "",
           email: b.email || "",
           website: b.website || "",
           address: b.address || b.city || "",
-          maps: "",
+          maps: b.map_url || "",
           instagram: b.social_links?.instagram,
           linkedin: b.social_links?.linkedin,
         },
@@ -142,6 +150,11 @@ export default function BusinessProfile() {
   const [sent, setSent] = useState(false);
   const [helpful, setHelpful] = useState<Record<number, boolean>>({});
   const [copied, setCopied] = useState(false);
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState("");
+  const [reviewBusy, setReviewBusy] = useState(false);
+  const [reviewError, setReviewError] = useState("");
   const tabsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -194,17 +207,74 @@ export default function BusinessProfile() {
 
   const related = relatedBusinesses(b);
   const galleryItems = galleryGroup === "All" ? b.gallery : b.gallery.filter((g) => g.group === galleryGroup);
+  const publicShareUrl = businessApi.shareUrl(b.slug);
+
   const share = async () => {
     try {
-      if (navigator.share) await navigator.share({ title: b.name, url: window.location.href });
+      if (navigator.share) await navigator.share({ title: b.name, text: b.description || `Discover ${b.name} on WS Hub.`, url: publicShareUrl });
       else {
-        await navigator.clipboard.writeText(window.location.href);
+        await navigator.clipboard.writeText(publicShareUrl);
         setCopied(true);
         setTimeout(() => setCopied(false), 1800);
       }
     } catch {
       /* dismissed */
     }
+  };
+
+  const buildVCard = () => {
+    const escape = (value: string) => value.replace(/\\/g, "\\\\").replace(/\n/g, "\\n").replace(/;/g, "\\;").replace(/,/g, "\\,");
+    const lines = ["BEGIN:VCARD", "VERSION:3.0", `FN:${escape(b.name)}`, `ORG:${escape(b.name)}`];
+    if (b.contact.phone) lines.push(`TEL;TYPE=WORK,VOICE:${escape(b.contact.phone)}`);
+    if (b.contact.email) lines.push(`EMAIL;TYPE=WORK:${escape(b.contact.email)}`);
+    if (b.contact.website) lines.push(`URL:${escape(b.contact.website)}`);
+    if (b.contact.address) lines.push(`ADR;TYPE=WORK:;;${escape(b.contact.address)};;;;`);
+    lines.push(`NOTE:${escape(publicShareUrl)}`, "END:VCARD");
+    return lines.join("\r\n");
+  };
+
+  const downloadVCard = () => {
+    const url = URL.createObjectURL(new Blob([buildVCard()], { type: "text/vcard;charset=utf-8" }));
+    const anchor = document.createElement("a"); anchor.href = url; anchor.download = `${b.slug || "business"}.vcf`; anchor.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
+  const shareDigitalCard = async () => {
+    const file = new File([buildVCard()], `${b.slug || "business"}.vcf`, { type: "text/vcard;charset=utf-8" });
+    try {
+      if (navigator.share && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ title: `${b.name} digital visiting card`, text: `Save ${b.name}'s contact card`, files: [file] });
+      } else if (navigator.share) {
+        downloadVCard();
+        await navigator.share({ title: `${b.name} digital visiting card`, text: `Save ${b.name}'s contact details`, url: publicShareUrl });
+      } else {
+        downloadVCard();
+        await navigator.clipboard.writeText(publicShareUrl);
+        setCopied(true);
+        window.setTimeout(() => setCopied(false), 2500);
+      }
+    } catch (error) {
+      if ((error as DOMException)?.name !== "AbortError") {
+        downloadVCard();
+        try { await navigator.clipboard.writeText(publicShareUrl); setCopied(true); window.setTimeout(() => setCopied(false), 2500); } catch { /* Clipboard may be unavailable in older browsers. */ }
+      }
+    }
+  };
+
+  const submitReview = async (event: FormEvent) => {
+    event.preventDefault(); setReviewError(""); setReviewBusy(true);
+    try {
+      await businessApi.reviews.submit(b.id, reviewRating, reviewComment.trim() || undefined);
+      const [reviewList, refreshed]: any[] = await Promise.all([businessApi.reviews.list(b.id, 1, 5), businessApi.get(slug)]);
+      const rows = reviewList?.data || [];
+      const fresh = refreshed?.data?.data ?? refreshed?.data ?? refreshed;
+      setApiBusiness((current: any) => ({ ...current, rating: Number(fresh.avg_rating ?? current.rating), reviews: Number(fresh.review_count ?? current.reviews), reviewList: rows.map((item: any) => ({ id: item.id, name: item.reviewer?.full_name || "WS Hub member", role: "Customer", date: new Date(item.created_at).toLocaleDateString("en-IN"), rating: Number(item.rating), text: item.comment || "", helpful: 0 })) }));
+      setReviewComment(""); setReviewOpen(false);
+    } catch (error) {
+      if ((error as { status?: number })?.status === 401) navigate(`/login?next=${encodeURIComponent(window.location.hash.slice(1))}`);
+      setReviewError(error instanceof Error ? error.message : "Could not submit your review.");
+    }
+    finally { setReviewBusy(false); }
   };
 
   const jump = (t: Tab) => {
@@ -219,7 +289,7 @@ export default function BusinessProfile() {
 
   const ratingDist = [5, 4, 3, 2, 1].map((s) => ({
     star: s,
-    pct: Math.round((b.reviewList.filter((r) => r.rating === s).length / b.reviewList.length) * 100),
+    pct: b.reviewList.length ? Math.round((b.reviewList.filter((r) => r.rating === s).length / b.reviewList.length) * 100) : 0,
   }));
 
   return (
@@ -275,7 +345,7 @@ export default function BusinessProfile() {
               <a href={`tel:${b.contact.phone.replace(/\s/g, "")}`} className="inline-flex items-center justify-center gap-1.5 rounded-md bg-navy-50 px-4 py-2.5 text-[12.5px] font-semibold text-navy-800 transition-colors hover:bg-navy-100"><Phone className="h-4 w-4" /> Call</a>
               <a href={`https://wa.me/${b.contact.whatsapp.replace(/\D/g, "")}`} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-1.5 rounded-md bg-emerald-50 px-4 py-2.5 text-[12.5px] font-semibold text-emerald-700 transition-colors hover:bg-emerald-100"><WhatsAppIcon className="h-4 w-4" /> WhatsApp</a>
               <a href={`https://${b.contact.website}`} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-1.5 rounded-md border border-slate-300 px-4 py-2.5 text-[12.5px] font-semibold text-navy-800 transition-colors hover:border-navy-700 hover:bg-navy-50"><Globe className="h-4 w-4" /> Website</a>
-              <a href={`https://maps.google.com/?q=${encodeURIComponent(b.contact.address)}`} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-1.5 rounded-md border border-slate-300 px-4 py-2.5 text-[12.5px] font-semibold text-navy-800 transition-colors hover:border-navy-700 hover:bg-navy-50"><Navigation className="h-4 w-4" /> Directions</a>
+              <a href={b.contact.maps || `https://maps.google.com/?q=${encodeURIComponent(b.contact.address)}`} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-1.5 rounded-md border border-slate-300 px-4 py-2.5 text-[12.5px] font-semibold text-navy-800 transition-colors hover:border-navy-700 hover:bg-navy-50"><Navigation className="h-4 w-4" /> Directions</a>
               <button type="button" onClick={() => { setSent(false); setCollab(true); }} className="col-span-2 inline-flex items-center justify-center gap-2 rounded-md bg-gold-500 px-5 py-2.5 text-[12.5px] font-bold text-navy-900 transition-all hover:-translate-y-0.5 hover:bg-gold-400 hover:shadow-[0_12px_24px_-10px_rgba(226,176,74,0.9)] sm:col-span-1">
                 <Handshake className="h-4 w-4" /> Collaborate
               </button>
@@ -313,7 +383,7 @@ export default function BusinessProfile() {
           <div className="space-y-6">
             {/* Overview */}
             <SectionCard id="overview" title="Overview">
-              <p className="text-[14px] leading-relaxed text-slate-700">{b.description} {b.tagline} Based in {b.area}, {b.location}, {b.name} has been serving customers since {b.established} and is a {b.businessType.toLowerCase()} in the {b.industry.toLowerCase()} space.</p>
+              <p className="text-[14px] leading-relaxed text-slate-700">{b.description}{b.location ? ` Based in ${[b.area, b.location].filter(Boolean).join(", ")},` : ""} {b.name} is a {b.businessType.toLowerCase()} in the {b.industry.toLowerCase()} space{b.established ? `, established in ${b.established}` : ""}.</p>
               <div className="mt-5 grid gap-4 sm:grid-cols-2">
                 <div className="rounded-lg border border-line bg-navy-50/60 p-4">
                   <p className="inline-flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-wide text-navy-700"><Target className="h-4 w-4" /> Mission</p>
@@ -326,9 +396,9 @@ export default function BusinessProfile() {
               </div>
               <dl className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-4">
                 {[
-                  { icon: User, k: "Founder", v: b.founder },
+                  { icon: User, k: "Founder", v: b.founder || "Not listed" },
                   { icon: Users, k: "Employees", v: b.employees },
-                  { icon: CalendarDays, k: "Established", v: String(b.established) },
+                  { icon: CalendarDays, k: "Established", v: b.established == null ? "Not listed" : String(b.established) },
                   { icon: Clock, k: "Working Hours", v: b.hours },
                 ].map(({ icon: Icon, k, v }) => (
                   <div key={k} className="flex gap-2.5">
@@ -347,8 +417,8 @@ export default function BusinessProfile() {
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 {b.products.map((p) => (
                   <article key={p.name} className="card group flex flex-col overflow-hidden">
-                    <div className="aspect-[4/3] overflow-hidden">
-                      <img src={p.image} alt={p.name} loading="lazy" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                    <div className="aspect-[4/3] overflow-hidden bg-slate-100">
+                      {p.image ? <img src={p.image} alt={p.name} loading="lazy" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" /> : <div className="flex h-full items-center justify-center text-[12px] text-slate-500">{p.name}</div>}
                     </div>
                     <div className="flex flex-1 flex-col p-3.5">
                       <div className="flex items-start justify-between gap-2">
@@ -375,13 +445,14 @@ export default function BusinessProfile() {
                     <p className="mt-1 text-[12px] leading-relaxed text-slate-600">{s.description}</p>
                   </div>
                 ))}
+                {b.services.length === 0 && <p className="rounded-lg border border-dashed border-line p-5 text-[12px] text-slate-500 sm:col-span-3">No services have been added yet.</p>}
               </div>
             </SectionCard>
 
             {/* Gallery */}
             <SectionCard id="gallery" title="Gallery">
               <div className="mb-4 flex flex-wrap gap-2">
-                {(["All", "Office", "Team", "Events"] as const).map((g) => (
+                {(["All", "Office", "Team", "Events", "Products", "Other"] as const).map((g) => (
                   <button key={g} type="button" onClick={() => setGalleryGroup(g)} className={cn("rounded-full border px-3.5 py-1.5 text-[11.5px] font-medium transition-all", galleryGroup === g ? "border-navy-800 bg-navy-800 text-white" : "border-slate-200 bg-white text-slate-600 hover:border-navy-700")}>{g}</button>
                 ))}
               </div>
@@ -431,11 +502,19 @@ export default function BusinessProfile() {
                       </div>
                     ))}
                   </div>
-                  <button type="button" className="btn-navy mt-4 w-full py-2.5">Write a Review</button>
+                  <button type="button" onClick={() => setReviewOpen((open) => !open)} className="btn-navy mt-4 w-full py-2.5">{reviewOpen ? "Cancel review" : "Write a Review"}</button>
                 </div>
+                <div className="space-y-4">
+                {reviewOpen && <form onSubmit={(event) => void submitReview(event)} className="rounded-lg border border-line p-4">
+                  <h3 className="text-[13px] font-bold text-navy-900">Share your experience</h3>
+                  <div className="my-3 flex gap-1" role="radiogroup" aria-label="Your rating">{[1, 2, 3, 4, 5].map((rating) => <button key={rating} type="button" role="radio" aria-checked={reviewRating === rating} aria-label={`${rating} star${rating === 1 ? "" : "s"}`} onClick={() => setReviewRating(rating)}><Star className={cn("h-6 w-6", rating <= reviewRating ? "text-gold-500" : "text-slate-300")} fill="currentColor" /></button>)}</div>
+                  <textarea value={reviewComment} onChange={(event) => setReviewComment(event.target.value)} maxLength={2000} rows={4} placeholder="Write an optional comment" className="w-full rounded-md border border-line p-3 text-[12px] outline-none focus:border-navy-500" />
+                  {reviewError && <p role="alert" className="mt-2 text-[12px] text-red-600">{reviewError}</p>}
+                  <button type="submit" disabled={reviewBusy} className="btn-navy mt-3 px-4 py-2">{reviewBusy ? "Submitting…" : "Submit review"}</button>
+                </form>}
                 <ul className="space-y-4">
                   {b.reviewList.map((r, i) => (
-                    <li key={r.name} className="rounded-lg border border-line p-4">
+                    <li key={r.id || `${r.name}-${r.date}-${i}`} className="rounded-lg border border-line p-4">
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-center gap-3">
                           <span className="flex h-9 w-9 items-center justify-center rounded-full bg-navy-800 text-[12px] font-bold text-white">{r.name.split(" ").map((w) => w[0]).slice(0, 2).join("")}</span>
@@ -458,6 +537,7 @@ export default function BusinessProfile() {
                     </li>
                   ))}
                 </ul>
+                </div>
               </div>
             </SectionCard>
 
@@ -471,7 +551,7 @@ export default function BusinessProfile() {
                     { icon: Globe, label: "Website", value: b.contact.website, href: `https://${b.contact.website}` },
                     { icon: LinkedinIcon, label: "LinkedIn", value: b.contact.linkedin, href: `https://${b.contact.linkedin}` },
                     { icon: InstagramIcon, label: "Instagram", value: b.contact.instagram, href: "#" },
-                    { icon: MapPin, label: "Address", value: b.contact.address, href: `https://maps.google.com/?q=${encodeURIComponent(b.contact.address)}` },
+                    { icon: MapPin, label: "Address", value: b.contact.address, href: b.contact.maps || `https://maps.google.com/?q=${encodeURIComponent(b.contact.address)}` },
                   ].map(({ icon: Icon, label, value, href }) => (
                     <li key={label} className="flex items-start gap-3">
                       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-navy-50 text-navy-700"><Icon className="h-4 w-4" /></span>
@@ -494,6 +574,11 @@ export default function BusinessProfile() {
                     referrerPolicy="no-referrer-when-downgrade"
                   />
                 </div>
+              </div>
+              <div className="mt-5 flex flex-wrap items-center gap-2">
+                <button type="button" onClick={() => void shareDigitalCard()} className="inline-flex items-center gap-2 rounded-md bg-navy-800 px-4 py-2.5 text-[12px] font-semibold text-white hover:bg-navy-700"><Share2 className="h-4 w-4" />Share digital card</button>
+                <button type="button" onClick={downloadVCard} className="inline-flex items-center gap-2 rounded-md border border-navy-800 px-4 py-2.5 text-[12px] font-semibold text-navy-800 hover:bg-navy-50"><Download className="h-4 w-4" />Download contact card</button>
+                {copied && <span role="status" className="text-[11.5px] text-emerald-700">Profile link copied. The contact card was downloaded.</span>}
               </div>
             </SectionCard>
           </div>
