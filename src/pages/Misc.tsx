@@ -1,5 +1,5 @@
 import { Component, useEffect, type ReactNode } from "react";
-import { Link, Navigate, useLocation, useSearchParams } from "react-router-dom";
+import { Link, Navigate, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { AlertTriangle, ArrowRight, Compass, Construction } from "lucide-react";
 import { AuthForm } from "../components/ui/AuthForm";
 import { useStore } from "../store";
@@ -7,8 +7,10 @@ import { useStore } from "../store";
 /* ---------- Auth page ---------- */
 export function AuthPage() {
   const user = useStore((s) => s.user);
+  const navigate = useNavigate();
   const [params] = useSearchParams();
   const next = params.get("next") || "/dashboard";
+  const continueToNext = () => navigate(next.startsWith("/") ? next : "/dashboard", { replace: true });
   useEffect(() => {
     document.title = "Sign in — WS Hub";
   }, []);
@@ -25,7 +27,7 @@ export function AuthPage() {
             {["Send connection & introduction requests", "Apply to funding, grants and tenders", "Save profiles and track everything in your dashboard", "Get notified when investors view your profile"].map((t) => <li key={t} className="flex items-start gap-2"><span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-gold-500" /> {t}</li>)}
           </ul>
         </div>
-        <div className="rounded-2xl bg-white p-6 shadow-2xl sm:p-8"><AuthForm /></div>
+        <div className="rounded-2xl bg-white p-6 shadow-2xl sm:p-8"><AuthForm onDone={continueToNext} /></div>
       </div>
     </div>
   );

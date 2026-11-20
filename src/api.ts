@@ -156,7 +156,7 @@ export const businessApi = {
   },
   mine: () => apiRequest<any[]>("/api/businesses/mine"),
   create: (body: Record<string, unknown>) => apiRequest<any>("/api/businesses", { method: "POST", body: JSON.stringify(body) }),
-  get: (idOrSlug: string) => apiRequest<any>(`/api/businesses/${encodeURIComponent(idOrSlug)}`, { auth: false }),
+  get: (idOrSlug: string) => apiRequest<any>(`/api/businesses/${encodeURIComponent(idOrSlug)}`),
   getMine: (id: string) => apiRequest<any>(`/api/businesses/${encodeURIComponent(id)}`),
   trackView: (id: string) => apiRequest<unknown>(`/api/businesses/${encodeURIComponent(id)}/view`, { method: "POST", auth: false }),
   update: (id: string, body: Record<string, unknown>) => apiRequest<any>(`/api/businesses/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
@@ -197,6 +197,8 @@ export const paymentApi = {
     apiRequest<any>("/api/payments/checkout", { method: "POST", body: JSON.stringify({ planCode, businessId }) }),
   verify: (razorpay_order_id: string, razorpay_payment_id: string, razorpay_signature: string) =>
     apiRequest<{ status: string; message: string }>("/api/payments/verify", { method: "POST", body: JSON.stringify({ razorpay_order_id, razorpay_payment_id, razorpay_signature }) }),
+  signupStatus: () => apiRequest<{ paid: boolean; payment: any; amountMinor: number; currency: string }>("/api/payments/signup/status"),
+  signupCheckout: () => apiRequest<any>("/api/payments/signup/checkout", { method: "POST", body: "{}" }),
   history: (page = 1, limit = 12) => apiRequest<{ data: any[]; meta: ApiMeta }>(`/api/payments/history?page=${page}&limit=${limit}`),
   subscription: (businessId: string) => apiRequest<any>(`/api/payments/subscription/${encodeURIComponent(businessId)}`),
 };

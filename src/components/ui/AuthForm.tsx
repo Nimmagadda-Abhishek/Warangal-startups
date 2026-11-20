@@ -1,19 +1,20 @@
 import { useState, type FormEvent } from "react";
 import { Lock } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { login, toast, type Role } from "../../store";
 import { ChoiceGroup, Field, inputCls, PrimaryBtn } from "./Modal";
-import { authApi, setSession } from "../../api";
+import { authApi, paymentApi, setSession } from "../../api";
 
 const roles: Role[] = ["Founder", "Investor", "Business", "Mentor", "Student", "Professional"];
 
 export function AuthForm({ reason, onDone, compact = false }: { reason?: string; onDone?: () => void; compact?: boolean }) {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<Role>("Founder");
-  const [mode, setMode] = useState<"signin" | "signup">("signup");
+  const [mode, setMode] = useState<"signin" | "signup">(searchParams.get("mode") === "signin" ? "signin" : "signup");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -31,10 +32,10 @@ export function AuthForm({ reason, onDone, compact = false }: { reason?: string;
           memberType: ({ Founder: "founder", Business: "business", Investor: "investor", Mentor: "mentor", Student: "student", Professional: "professional" } as const)[role],
         });
         setSession(null);
-        const confirmation = signedUp.emailConfirmationRequired ? " Confirm your email using the link we sent." : "";
-        setNotice(`Your account is waiting for administrator approval.${confirmation}`);
+        const confirmation = signedUp.emailConfirmationRequired ? " Confirm your email using the link we sent, then sign in to pay." : " Sign in to complete the joining fee before your account can be approved.";
+        setNotice(`Account created. A one-time ₹2 joining fee is required; business listings are free after that.${confirmation}`);
         setMode("signin");
-        toast("Account created. It is awaiting approval.", "success");
+        toast("Account created. Complete the ₹2 joining fee after signing in.", "success");
         return;
       }
       const result = await authApi.login(email.trim(), password);
@@ -43,8 +44,13 @@ export function AuthForm({ reason, onDone, compact = false }: { reason?: string;
       const accountRole = account?.profile?.role;
       const memberRole = account?.profile?.member_type;
       if (accountRole !== "admin" && account?.profile?.approval_status !== "approved") {
+        const joining = await paymentApi.signupStatus();
+        if (!joining.paid) {
+          navigate("/signup/payment", { replace: true });
+          return;
+        }
         setSession(null);
-        setNotice("Your email is confirmed. Your account is still waiting for administrator approval.");
+        setNotice("Your joining fee is paid. Your account is waiting for administrator approval.");
         return;
       }
       login({
@@ -99,7 +105,7 @@ export function AuthForm({ reason, onDone, compact = false }: { reason?: string;
       {error && <p className="rounded-md bg-red-50 px-3 py-2 text-[12px] font-semibold text-red-700">{error}</p>}
       {notice && <p role="status" className="rounded-md bg-emerald-50 px-3 py-2 text-[12px] font-medium text-emerald-800">{notice}</p>}
       <PrimaryBtn>{submitting ? "Please wait..." : mode === "signup" ? "Create account" : "Sign in & continue"}</PrimaryBtn>
-      <p className="text-center text-[11px] text-slate-500">{mode === "signup" ? "Account access starts after administrator approval." : "By continuing you agree to the WS Hub terms."}</p>
+      <p className="text-center text-[11px] text-slate-500">{mode === "signup" ? "One-time ₹2 joining fee. Business listings are free after signup." : "By continuing you agree to the WS Hub terms."}</p>
     </form>
   );
 }

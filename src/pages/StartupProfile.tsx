@@ -15,6 +15,7 @@ import { EventCard } from "./Events";
 import { StoryCard } from "./Stories";
 import { toggleCompareStartup, useStore } from "../store";
 import { cn } from "../utils/cn";
+import StartupListingProfile from "./StartupListingProfile";
 
 function Bars({ data }: { data: number[] }) {
   const max = Math.max(...data, 0.1);
@@ -40,7 +41,7 @@ export default function StartupProfile() {
   const inCompare = useStore((x) => x.compareStartups.includes(slug));
   useTrackView(`startup:${slug}`);
   useEffect(() => { if (s) document.title = `${s.name} — Startups — WS Hub`; }, [s]);
-  if (!s) return <Navigate to="/startups" replace />;
+  if (!s) return <StartupListingProfile startupSlug={slug} />;
 
   const founder = getFounder(s.founderSlug);
   const investors = s.funding.investorSlugs.map(getInvestor).filter(Boolean);

@@ -155,6 +155,7 @@ export default function BusinessProfile() {
   const [reviewComment, setReviewComment] = useState("");
   const [reviewBusy, setReviewBusy] = useState(false);
   const [reviewError, setReviewError] = useState("");
+  const [reviewSuccess, setReviewSuccess] = useState("");
   const tabsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -262,14 +263,25 @@ export default function BusinessProfile() {
   };
 
   const submitReview = async (event: FormEvent) => {
-    event.preventDefault(); setReviewError(""); setReviewBusy(true);
+    event.preventDefault(); setReviewError(""); setReviewSuccess(""); setReviewBusy(true);
     try {
-      await businessApi.reviews.submit(b.id, reviewRating, reviewComment.trim() || undefined);
-      const [reviewList, refreshed]: any[] = await Promise.all([businessApi.reviews.list(b.id, 1, 5), businessApi.get(slug)]);
-      const rows = reviewList?.data || [];
-      const fresh = refreshed?.data?.data ?? refreshed?.data ?? refreshed;
-      setApiBusiness((current: any) => ({ ...current, rating: Number(fresh.avg_rating ?? current.rating), reviews: Number(fresh.review_count ?? current.reviews), reviewList: rows.map((item: any) => ({ id: item.id, name: item.reviewer?.full_name || "WS Hub member", role: "Customer", date: new Date(item.created_at).toLocaleDateString("en-IN"), rating: Number(item.rating), text: item.comment || "", helpful: 0 })) }));
-      setReviewComment(""); setReviewOpen(false);
+      const response: any = await businessApi.reviews.submit(b.id, reviewRating, reviewComment.trim() || undefined);
+      const saved = response?.data?.data ?? response?.data ?? response;
+      const savedRow = { id: saved.id, name: "You", role: "Customer", date: new Date(saved.created_at || Date.now()).toLocaleDateString("en-IN"), rating: Number(saved.rating || reviewRating), text: saved.comment || reviewComment.trim(), helpful: 0 };
+      setApiBusiness((current: any) => ({ ...current, reviewList: [savedRow, ...(current.reviewList || []).filter((item: any) => item.id !== saved.id)].slice(0, 5) }));
+      setReviewComment(""); setReviewOpen(false); setReviewSuccess("Your review was submitted.");
+
+      // A successful write should not be reported as a failed review just because
+      // a follow-up read is temporarily unavailable.
+      const [listResult, businessResult] = await Promise.allSettled([businessApi.reviews.list(b.id, 1, 5), businessApi.get(slug)]);
+      if (listResult.status === "fulfilled") {
+        const rows = listResult.value?.data || [];
+        setApiBusiness((current: any) => ({ ...current, reviewList: rows.map((item: any) => ({ id: item.id, name: item.reviewer?.full_name || "WS Hub member", role: "Customer", date: new Date(item.created_at).toLocaleDateString("en-IN"), rating: Number(item.rating), text: item.comment || "", helpful: 0 })) }));
+      }
+      if (businessResult.status === "fulfilled") {
+        const fresh = businessResult.value?.data?.data ?? businessResult.value?.data ?? businessResult.value;
+        setApiBusiness((current: any) => ({ ...current, rating: Number(fresh.avg_rating ?? current.rating), reviews: Number(fresh.review_count ?? current.reviews) }));
+      }
     } catch (error) {
       if ((error as { status?: number })?.status === 401) navigate(`/login?next=${encodeURIComponent(window.location.hash.slice(1))}`);
       setReviewError(error instanceof Error ? error.message : "Could not submit your review.");
@@ -512,6 +524,7 @@ export default function BusinessProfile() {
                   {reviewError && <p role="alert" className="mt-2 text-[12px] text-red-600">{reviewError}</p>}
                   <button type="submit" disabled={reviewBusy} className="btn-navy mt-3 px-4 py-2">{reviewBusy ? "Submitting…" : "Submit review"}</button>
                 </form>}
+                {reviewSuccess && <p role="status" className="rounded-md bg-emerald-50 px-3 py-2 text-[12px] text-emerald-800">{reviewSuccess}</p>}
                 <ul className="space-y-4">
                   {b.reviewList.map((r, i) => (
                     <li key={r.id || `${r.name}-${r.date}-${i}`} className="rounded-lg border border-line p-4">
