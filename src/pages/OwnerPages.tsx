@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { Link, Navigate, useLocation, useNavigate, useParams } from "react-router-dom";
+import { Link, Navigate, useLocation, useParams } from "react-router-dom";
 import { ArrowLeft, ArrowRight, BadgeCheck, Building2, CheckCircle2, ExternalLink, Globe2, ImagePlus, LoaderCircle, MailCheck, MapPin, Plus, Save, Store, UserRound } from "lucide-react";
-import { authApi, businessApi, getAccessToken, homeApi, paymentApi, profileApi, setSession, type Session } from "../api";
+import { authApi, businessApi, getAccessToken, homeApi, profileApi, setSession, type Session } from "../api";
 import { Field, inputCls, textareaCls } from "../components/ui/Modal";
 import { Shimmer } from "../components/ui/Shimmer";
 import { login, useStore, type Role } from "../store";
@@ -29,45 +29,6 @@ function formError(reason: unknown, fallback: string) {
     return `${error.message || "Please check the entered details."} ${details.join("; ")}`;
   }
   return error.message || fallback;
-}
-
-type ListingCheckoutOptions = {
-  key: string; amount: number; currency: string; name: string; description: string; order_id: string;
-  prefill?: { email?: string };
-  handler: (result: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => void;
-  modal: { ondismiss: () => void };
-};
-declare global { interface Window { Razorpay?: new (options: ListingCheckoutOptions) => { open: () => void } } }
-
-async function payListingFee(businessId: string) {
-  const checkoutResult = await paymentApi.listingFeeCheckout(businessId);
-  const checkout = checkoutResult?.data ?? checkoutResult;
-  if (checkout?.paid) return true;
-  if (!window.Razorpay) {
-    await new Promise<void>((resolve, reject) => {
-      const script = document.createElement("script");
-      script.src = "https://checkout.razorpay.com/v1/checkout.js";
-      script.onload = () => resolve();
-      script.onerror = () => reject(new Error("Could not load Razorpay Checkout. Please try again."));
-      document.body.appendChild(script);
-    });
-  }
-  if (!window.Razorpay) throw new Error("Razorpay Checkout is unavailable.");
-  return new Promise<boolean>((resolve, reject) => {
-    const checkoutWindow = new window.Razorpay!({
-      key: checkout.keyId, amount: checkout.amount, currency: checkout.currency,
-      name: checkout.name, description: checkout.description, order_id: checkout.orderId,
-      prefill: checkout.prefill,
-      handler: async (payment) => {
-        try {
-          await paymentApi.verify(payment.razorpay_order_id, payment.razorpay_payment_id, payment.razorpay_signature);
-          resolve(true);
-        } catch (error) { reject(error); }
-      },
-      modal: { ondismiss: () => resolve(false) },
-    });
-    checkoutWindow.open();
-  });
 }
 
 export function EditProfilePage() {
@@ -150,11 +111,10 @@ export function EditProfilePage() {
   </div>;
 }
 
-type BusinessItem = { id: string; slug: string; name: string; city?: string; status: string; description?: string; logo_url?: string; listing_fee_paid?: boolean };
+type BusinessItem = { id: string; slug: string; name: string; city?: string; status: string; description?: string; logo_url?: string };
 
 export function BusinessManagerPage() {
   const user = useStore((state) => state.user);
-  const navigate = useNavigate();
   const [items, setItems] = useState<BusinessItem[]>([]);
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(true);
@@ -185,11 +145,7 @@ export function BusinessManagerPage() {
     setBusy(item.id); setError(""); setNotice("");
     try {
       if (item.status === "published") await businessApi.unpublish(item.id);
-      else if (!item.listing_fee_paid) {
-        setNotice("A one-time ₹2 fee is required before publishing. Continue to secure payment.");
-        navigate(`/businesses/${item.id}/payment`, { state: { message: "Complete the ₹2 listing fee to publish this business." } });
-        return;
-      } else await businessApi.publish(item.id);
+      else await businessApi.publish(item.id);
       setNotice(item.status === "published" ? "The listing is now a draft." : "Your business is published on WS Hub.");
       setRefresh((value) => value + 1);
     } catch (reason) { setError(reason instanceof Error ? reason.message : "Could not update the listing status."); }
@@ -202,7 +158,7 @@ export function BusinessManagerPage() {
     {error && <Notice error>{error}</Notice>}{notice && <Notice>{notice}</Notice>}
     <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
       <section className="card p-5 sm:p-6"><div className="flex items-center justify-between gap-3"><div><h2 className="text-[16px] font-bold text-navy-900">Your listings</h2><p className="mt-1 text-[12px] text-slate-500">Drafts remain private until you publish them.</p></div><span className="rounded-full bg-navy-50 px-3 py-1 text-[11px] font-bold text-navy-700">{items.length} / 5</span></div>
-        {loading ? <div role="status" aria-label="Loading business listings" className="mt-4 space-y-3">{Array.from({ length: 3 }, (_, item) => <div key={item} className="flex items-center gap-3 rounded-lg border border-line p-4"><Shimmer className="h-11 w-11 rounded-lg" /><div className="flex-1 space-y-2"><Shimmer className="h-4 w-1/3" /><Shimmer className="h-3 w-1/2" /></div><Shimmer className="h-8 w-20" /></div>)}</div> : items.length === 0 ? <div className="mt-5 rounded-lg border border-dashed border-slate-300 px-5 py-8 text-center"><Store className="mx-auto h-8 w-8 text-slate-300" /><p className="mt-3 text-[13px] font-semibold text-navy-900">No business listings yet</p><p className="mt-1 text-[12px] text-slate-500">Create your first draft to get started.</p></div> : <ul className="mt-4 divide-y divide-line">{items.map((item) => <li key={item.id} className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between"><div className="flex min-w-0 items-center gap-3">{item.logo_url ? <img src={item.logo_url} alt="" className="h-11 w-11 rounded-lg object-cover" /> : <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-navy-50 text-navy-700"><Building2 className="h-5 w-5" /></span>}<div className="min-w-0"><p className="truncate text-[13.5px] font-bold text-navy-900">{item.name}</p><p className="mt-0.5 truncate text-[11px] text-slate-500">{item.city || "Location not added"} · {item.slug}</p></div></div><div className="flex flex-wrap items-center gap-2"><span className={`rounded-full px-2.5 py-1 text-[10.5px] font-bold capitalize ${item.status === "published" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-800"}`}>{item.status}</span>{!item.listing_fee_paid && item.status !== "published" && <span className="text-[10.5px] font-medium text-amber-700">₹2 fee needed to publish</span>}<Link to={`/businesses/${encodeURIComponent(item.id)}/edit`} className="rounded-md border border-slate-300 px-3 py-1.5 text-[11.5px] font-semibold text-navy-800 hover:bg-navy-50">Edit</Link>{!item.listing_fee_paid && item.status !== "published" && <Link to={`/businesses/${encodeURIComponent(item.id)}/payment`} className="btn-gold inline-flex items-center justify-center px-3 py-1.5 text-[11.5px]">Pay ₹2</Link>}{item.status === "published" && <Link to={`/businesses/${encodeURIComponent(item.slug)}`} aria-label={`View ${item.name}`} className="rounded-md border border-slate-300 p-1.5 text-navy-700 hover:bg-navy-50"><ExternalLink className="h-4 w-4" /></Link>}<button type="button" disabled={busy === item.id} onClick={() => void changeStatus(item)} className="rounded-md bg-navy-800 px-3 py-1.5 text-[11.5px] font-semibold text-white hover:bg-navy-700 disabled:opacity-50">{busy === item.id ? "Saving…" : item.status === "published" ? "Unpublish" : "Publish"}</button></div></li>)}</ul>}
+        {loading ? <div role="status" aria-label="Loading business listings" className="mt-4 space-y-3">{Array.from({ length: 3 }, (_, item) => <div key={item} className="flex items-center gap-3 rounded-lg border border-line p-4"><Shimmer className="h-11 w-11 rounded-lg" /><div className="flex-1 space-y-2"><Shimmer className="h-4 w-1/3" /><Shimmer className="h-3 w-1/2" /></div><Shimmer className="h-8 w-20" /></div>)}</div> : items.length === 0 ? <div className="mt-5 rounded-lg border border-dashed border-slate-300 px-5 py-8 text-center"><Store className="mx-auto h-8 w-8 text-slate-300" /><p className="mt-3 text-[13px] font-semibold text-navy-900">No business listings yet</p><p className="mt-1 text-[12px] text-slate-500">Create your first draft to get started.</p></div> : <ul className="mt-4 divide-y divide-line">{items.map((item) => <li key={item.id} className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between"><div className="flex min-w-0 items-center gap-3">{item.logo_url ? <img src={item.logo_url} alt="" className="h-11 w-11 rounded-lg object-cover" /> : <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-navy-50 text-navy-700"><Building2 className="h-5 w-5" /></span>}<div className="min-w-0"><p className="truncate text-[13.5px] font-bold text-navy-900">{item.name}</p><p className="mt-0.5 truncate text-[11px] text-slate-500">{item.city || "Location not added"} · {item.slug}</p></div></div><div className="flex flex-wrap items-center gap-2"><span className={`rounded-full px-2.5 py-1 text-[10.5px] font-bold capitalize ${item.status === "published" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-800"}`}>{item.status}</span><Link to={`/businesses/${encodeURIComponent(item.id)}/edit`} className="rounded-md border border-slate-300 px-3 py-1.5 text-[11.5px] font-semibold text-navy-800 hover:bg-navy-50">Edit</Link>{item.status === "published" && <Link to={`/businesses/${encodeURIComponent(item.slug)}`} aria-label={`View ${item.name}`} className="rounded-md border border-slate-300 p-1.5 text-navy-700 hover:bg-navy-50"><ExternalLink className="h-4 w-4" /></Link>}<button type="button" disabled={busy === item.id} onClick={() => void changeStatus(item)} className="rounded-md bg-navy-800 px-3 py-1.5 text-[11.5px] font-semibold text-white hover:bg-navy-700 disabled:opacity-50">{busy === item.id ? "Saving…" : item.status === "published" ? "Unpublish" : "Publish"}</button></div></li>)}</ul>}
       </section>
       <aside className="h-fit rounded-xl border border-navy-800 bg-navy-900 p-5 text-white sm:p-6"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 text-gold-400"><Plus className="h-5 w-5" /></span><h2 className="mt-4 text-[16px] font-bold">Add a business</h2><p className="mt-1.5 text-[12px] leading-relaxed text-white/70">Start with a name. You can add contact, location and category details before publishing.</p><form onSubmit={create} className="mt-5 space-y-3"><label htmlFor="new-business-name" className="block text-[11.5px] font-semibold text-white/85">Business name</label><input id="new-business-name" className="h-10 w-full rounded-md border border-white/20 bg-white px-3 text-[13px] text-navy-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-gold-400" minLength={2} maxLength={120} required value={name} onChange={(event) => setName(event.target.value)} placeholder="e.g. Warangal Coffee House" /><button type="submit" disabled={busy === "new" || items.length >= 5} className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-gold-500 px-4 py-2.5 text-[12.5px] font-bold text-navy-900 hover:bg-gold-400 disabled:cursor-not-allowed disabled:opacity-50"><Plus className="h-4 w-4" />{busy === "new" ? "Creating…" : "Create draft"}</button>{items.length >= 5 && <p className="text-[11px] text-white/65">You’ve reached the 5 business limit.</p>}</form></aside>
     </div>
@@ -222,7 +178,6 @@ const blankBusiness: BusinessForm = { name: "", description: "", mission: "", vi
 
 export function EditBusinessPage() {
   const user = useStore((state) => state.user);
-  const navigate = useNavigate();
   const location = useLocation();
   const { id = "" } = useParams();
   const [form, setForm] = useState<BusinessForm>(blankBusiness);
@@ -236,7 +191,6 @@ export function EditBusinessPage() {
   const [message, setMessage] = useState((location.state as { message?: string } | null)?.message || "");
   const [error, setError] = useState("");
   const [missing, setMissing] = useState<string[]>((location.state as { missing?: string[] } | null)?.missing || []);
-  const [listingFeePaid, setListingFeePaid] = useState(false);
   const [uploadingMedia, setUploadingMedia] = useState<string | null>(null);
   useEffect(() => {
     document.title = "Edit business — WS Hub";
@@ -259,7 +213,6 @@ export function EditBusinessPage() {
       });
       const loadedServices = Array.isArray(serviceResult) ? serviceResult : Array.isArray(serviceResult?.data) ? serviceResult.data : Array.isArray(serviceResult?.data?.data) ? serviceResult.data.data : [];
       setServices(loadedServices);
-      setListingFeePaid(business.listing_fee_paid === true);
     }).catch((reason) => current && setError(reason instanceof Error ? reason.message : "Could not load this business."))
       .finally(() => current && setLoading(false));
     return () => { current = false; };
@@ -361,10 +314,6 @@ export function EditBusinessPage() {
     if (required.length || invalid.length) { const message = [...required.length ? [`Complete the required fields: ${required.join(", ")}.`] : [], ...invalid].join(" "); setMissing(required); setError(message); window.alert(message); setSaving(false); return; }
     try {
       await businessApi.update(id, payload);
-      if (!listingFeePaid) {
-        navigate(`/businesses/${id}/payment`, { state: { message: "Your business details are saved. Complete the ₹2 listing fee to publish." } });
-        return;
-      }
       await businessApi.publish(id); setMessage("Your business is now published."); window.alert("Your business profile was published successfully.");
     }
     catch (reason) { const details = (reason as { details?: { missing?: string[] } })?.details; setMissing(details?.missing || []); const message = formError(reason, "Could not publish your business."); setError(message); window.alert(message); }
@@ -403,70 +352,6 @@ export function EditBusinessPage() {
       </section>      <div className="flex flex-wrap items-center justify-between gap-3"><Link to="/businesses/manage" className="text-[12px] font-semibold text-slate-600 hover:text-navy-800">Cancel</Link><div className="flex flex-wrap gap-2"><button type="submit" disabled={saving || !!uploadingMedia} className="btn-gold px-5 py-2.5"><Save className="h-4 w-4" />{saving ? "Saving…" : "Save draft"}</button><button type="button" disabled={saving || !!uploadingMedia} onClick={() => void publish()} className="btn-navy px-5 py-2.5"><BadgeCheck className="h-4 w-4" />Publish listing</button></div></div>
     </form>}
   </div>;
-}
-
-export function ListingPaymentPage() {
-  const user = useStore((state) => state.user);
-  const navigate = useNavigate();
-  const { id = "" } = useParams();
-  const location = useLocation();
-  const [paying, setPaying] = useState(false);
-  const [checkingProfile, setCheckingProfile] = useState(true);
-  const [paid, setPaid] = useState(false);
-  const [published, setPublished] = useState(false);
-  const [error, setError] = useState("");
-  const message = (location.state as { message?: string } | null)?.message;
-
-  useEffect(() => {
-    document.title = "Business listing payment — WS Hub";
-    let active = true;
-    businessApi.getMine(id).then((result) => {
-      const business = result?.data?.business ?? result?.data ?? result?.business ?? result;
-      const missing = [!business?.description?.trim() && "description", !business?.category_id && !business?.categoryId && "category", !business?.city?.trim() && "city", !business?.phone?.trim() && !business?.email?.trim() && "phone or email"].filter(Boolean) as string[];
-      if (missing.length) navigate(`/businesses/${id}/edit`, { replace: true, state: { message: "Complete these details first. Your business profile is saved as a private draft.", missing } });
-      else if (active) setCheckingProfile(false);
-    }).catch((reason) => {
-      if (active) { setError(reason instanceof Error ? reason.message : "Could not load the business profile."); setCheckingProfile(false); }
-    });
-    return () => { active = false; };
-  }, [id, navigate]);
-  if (!user && !getAccessToken()) return <Navigate to={`/login?next=${encodeURIComponent(`/businesses/${id}/payment`)}`} replace />;
-
-  const payAndPublish = async () => {
-    setPaying(true); setError("");
-    let paymentConfirmed = false;
-    try {
-      paymentConfirmed = await payListingFee(id);
-      if (!paymentConfirmed) return;
-      setPaid(true);
-      await businessApi.publish(id);
-      setPublished(true);
-    } catch (reason) {
-      if (paymentConfirmed) setPaid(true);
-      const reasonDetails = (reason as { details?: { missing?: string[] } })?.details;
-      if (paymentConfirmed && reasonDetails?.missing?.length) {
-        navigate(`/businesses/${id}/edit`, { replace: true, state: { message: "Your ₹2 payment is confirmed. Complete the remaining details, then publish your business.", missing: reasonDetails.missing } });
-        return;
-      }
-      setError(paymentConfirmed
-        ? "Your payment is confirmed, but the business could not be published. Try again from the business profile."
-        : reason instanceof Error ? reason.message : "Could not complete payment.");
-    } finally { setPaying(false); }
-  };
-
-  return <main className="page-in mx-auto max-w-xl px-4 py-12 sm:py-16">
-    <Link to={`/businesses/${id}/edit`} className="mb-5 inline-flex items-center gap-2 text-[12px] font-semibold text-navy-700 hover:underline"><ArrowLeft className="h-4 w-4" /> Back to business profile</Link>
-    <section className="card p-6 sm:p-9">
-      <span className={`mx-auto flex h-14 w-14 items-center justify-center rounded-full ${published ? "bg-emerald-100 text-emerald-700" : "bg-gold-100 text-gold-800"}`}>{published ? <CheckCircle2 className="h-7 w-7" /> : <BadgeCheck className="h-7 w-7" />}</span>
-      <p className="mt-5 text-center text-[11px] font-bold uppercase tracking-[.14em] text-gold-800">Business listing</p>
-      <h1 className="mt-2 text-center text-[26px] font-black text-navy-900">{published ? "Your business is live" : paid ? "Payment confirmed" : "Publish your business"}</h1>
-      <p className="mx-auto mt-2 max-w-md text-center text-[13px] leading-relaxed text-slate-600">{published ? "Your listing is now visible in the WS Hub directory." : message || "A one-time ₹2 listing fee is needed before your business can be published. After payment, we’ll publish the listing automatically."}</p>
-      {error && <div role="alert" className="mt-5 rounded-lg bg-red-50 px-4 py-3 text-[12.5px] text-red-700">{error}</div>}
-      <div className="mt-6 rounded-xl border border-line bg-slate-50 p-4"><div className="flex items-center justify-between"><span className="text-[12.5px] text-slate-600">Business listing fee</span><strong className="text-[18px] font-black text-navy-900">₹2.00</strong></div><p className="mt-1 text-[10.5px] text-slate-500">One-time payment · securely processed by Razorpay</p></div>
-      {published ? <Link to="/businesses/manage" className="btn-navy mt-5 flex w-full justify-center py-3">View your business listings</Link> : paid ? <Link to={`/businesses/${id}/edit`} className="btn-navy mt-5 flex w-full justify-center py-3">Return to business profile</Link> : <button type="button" onClick={() => void payAndPublish()} disabled={paying || checkingProfile} className="btn-gold mt-5 flex w-full justify-center py-3 disabled:opacity-60">{checkingProfile ? "Checking profile…" : paying ? "Processing…" : "Pay ₹2 and publish"}</button>}
-      {!published && <p className="mt-3 text-center text-[10.5px] text-slate-500">{checkingProfile ? "Checking your saved business details…" : "Your business stays private until the payment succeeds."}</p>}
-    </section>
-  </main>;
 }
 
 function callbackParams() {
