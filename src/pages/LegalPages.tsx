@@ -15,7 +15,7 @@ const policies: Record<string, Policy> = {
       { title: "1. About WS Hub", paragraphs: [`WS Hub is an online directory and community platform operated by ${publicBusinessInfo.legalName}. It helps people discover businesses and connect with founders, investors, mentors, and other members. WS Hub does not endorse or independently guarantee the products, services, claims, or performance of listed businesses.`] },
       { title: "2. Accounts and access", paragraphs: ["You must provide accurate account information, keep your login credentials secure, and use the platform lawfully. New accounts and business listings may be subject to review and approval. You are responsible for activity carried out through your account."] },
       { title: "3. Business listings", paragraphs: ["Creating and publishing a business listing is currently free. WS Hub will display any future charges and applicable terms before they take effect. You are responsible for the accuracy of your listing, your right to publish uploaded images and content, and responding to enquiries made to your business. WS Hub may hide or remove content that is unlawful, misleading, infringing, or otherwise violates these terms."] },
-      { title: "4. Payments", paragraphs: ["New accounts are charged a one-time ₹2 joining fee before administrator approval. This fee is charged once per account. Creating and publishing business listings are free. Payments are processed through Razorpay; WS Hub does not receive or store your payment credentials."] },
+      { title: "4. Payments", paragraphs: ["WS Hub is not currently collecting signup or account-approval fees. If charges are introduced later, they will be disclosed before taking effect."] },
       { title: "5. Acceptable use", bullets: ["Do not impersonate another person or business.", "Do not submit false, unlawful, harmful, or misleading information.", "Do not upload content unless you have permission to use it.", "Do not interfere with the security or operation of WS Hub or attempt unauthorized access." ] },
       { title: "6. Availability and changes", paragraphs: ["We may update or temporarily suspend parts of the platform for maintenance, security, or operational reasons. We may update these terms by publishing a revised version on this page. The date above indicates the latest revision."] },
       { title: "7. Contact", paragraphs: [`For questions about these terms, contact ${publicBusinessInfo.legalName} using the contact details on our Contact Us page.`] },
@@ -24,9 +24,9 @@ const policies: Record<string, Policy> = {
   "/terms-and-conditions": { title: "Terms and Conditions", intro: "These terms apply when you use WS Hub, create an account, or publish a business listing.", sections: [] },
   "/refund-policy": {
     title: "Refund and Cancellation Policy",
-    intro: "This policy covers the one-time ₹2 account joining fee. Business listings are free.",
+    intro: "WS Hub is not currently charging signup or business listing fees.",
     sections: [
-      { title: "1. Signup joining fee", paragraphs: ["A one-time ₹2 account joining fee is required for new accounts before administrator approval. This fee is charged once per account. Creating and publishing business listings do not require additional payment. For a duplicate charge, failed payment, or refund request, contact our support email with your Razorpay order or payment reference so we can review the transaction."] },
+      { title: "1. Current fees", paragraphs: ["No payment is required to register an account or receive administrator approval at this time."] },
       { title: "2. Unexpected charges", paragraphs: [`If you see a charge that appears related to WS Hub, contact ${publicBusinessInfo.supportEmail} with the account email, date, amount, and transaction reference. Never send full card numbers, UPI PINs, passwords, or one-time passcodes.`] },
     ],
   },
