@@ -29,7 +29,7 @@ export default function Home() {
       <div className="mx-auto max-w-[1280px] px-4 sm:px-6 lg:px-8">
         <section className="mt-9 grid gap-9 lg:grid-cols-2 lg:gap-7 xl:gap-8" aria-label="Featured">
           <FeaturedBusinesses items={home?.featured} />
-          <FeaturedStartups />
+          <FeaturedStartups items={home?.featuredStartups} />
         </section>
 
         <section className="mt-10 grid gap-9 lg:grid-cols-2 lg:gap-7 xl:gap-8" aria-label="Events and stories">
