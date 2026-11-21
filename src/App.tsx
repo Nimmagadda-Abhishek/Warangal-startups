@@ -19,7 +19,6 @@ import { AuthPage, ComingSoon, ErrorBoundary, NotFound } from "./pages/Misc";
 import { AuthResetPasswordPage, BusinessManagerPage, EditBusinessPage, EditProfilePage, EmailVerifiedPage } from "./pages/OwnerPages";
 import AdminPanel from "./pages/AdminPanel";
 import LegalPage from "./pages/LegalPages";
-import SignupPaymentPage from "./pages/SignupPayment";
 
 const roadmap = ["requirements", "collaboration", "jobs", "profile", "map", "achievements", "reviews", "help-center", "plans", "compare", "for-businesses", "for-startups"];
 
@@ -69,7 +68,6 @@ export default function App() {
               <Route path="/contact-us" element={<LegalPage />} />
               <Route path="/login" element={<AuthPage />} />
               <Route path="/signup" element={<AuthPage />} />
-              <Route path="/signup/payment" element={<SignupPaymentPage />} />
               {roadmap.map((r) => (
                 <Route key={r} path={`/${r}/*`} element={<ComingSoon />} />
               ))}

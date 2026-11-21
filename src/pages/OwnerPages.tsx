@@ -441,7 +441,7 @@ export function EmailVerifiedPage() {
       }
       if (active) {
         setStatus("verified");
-        setMessage(approvalPending ? "Your email is confirmed. Sign in to pay the one-time ₹2 joining fee, then your account can be reviewed for approval." : token ? "Your email is confirmed and your account is ready." : "Your email is confirmed. Sign in to continue to WS Hub.");
+        setMessage(approvalPending ? "Your email is confirmed. Your account is waiting for administrator approval." : token ? "Your email is confirmed and your account is ready." : "Your email is confirmed. Sign in to continue to WS Hub.");
       }
     };
     confirm().catch((reason) => { if (active) { setStatus("error"); setMessage(reason instanceof Error ? reason.message : "This confirmation link may have expired."); } });
