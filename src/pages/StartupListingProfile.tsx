@@ -87,11 +87,11 @@ export default function StartupListingProfile({ startupSlug }: { startupSlug?: s
   const Fact = ({ title, value }: { title: string; value?: string | number | null }) => value ? <div className="rounded-lg bg-slate-50 p-4"><p className="text-[11px] font-medium text-slate-500">{title}</p><p className="mt-1 text-sm font-bold text-navy-900">{value}</p></div> : null;
 
   return <main className="min-h-screen bg-slate-50 pb-24">
-    <header className="relative mb-[285px] sm:mb-[185px]">
-      <div className="relative h-[330px] bg-navy-950 sm:h-[390px]">{startup.cover_url && <img src={startup.cover_url} alt="" className="h-full w-full object-cover" />}<div className="absolute inset-0 bg-gradient-to-b from-navy-950/45 via-navy-950/15 to-navy-950/80" />
+    <header className="relative mb-5 sm:mb-[185px]">
+      <div className="relative h-[260px] bg-navy-950 sm:h-[390px]">{startup.cover_url && <img src={startup.cover_url} alt="" className="h-full w-full object-cover" />}<div className="absolute inset-0 bg-gradient-to-b from-navy-950/45 via-navy-950/15 to-navy-950/80" />
         <div className="relative mx-auto max-w-[1520px] px-4 pt-6 sm:px-8"><div className="flex items-center gap-2 text-sm text-white/90"><Link to="/" className="hover:underline">Home</Link><span>›</span><Link to="/startups" className="hover:underline">Startups</Link><span>›</span><span className="font-semibold text-white">{startup.name}</span></div></div>
       </div>
-      <div className="absolute inset-x-0 top-[220px] mx-auto max-w-[1520px] px-4 sm:top-[270px] sm:px-8">
+      <div className="relative z-10 mx-auto -mt-16 max-w-[1520px] px-4 sm:absolute sm:inset-x-0 sm:top-[270px] sm:mt-0 sm:px-8">
         <div className="grid gap-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-xl sm:grid-cols-[140px_minmax(0,1fr)_390px] sm:items-center sm:p-7">
           <div className="flex h-[112px] w-[112px] items-center justify-center overflow-hidden rounded-2xl border border-emerald-100 bg-emerald-50 text-3xl font-black text-emerald-700 shadow-sm sm:h-[140px] sm:w-[140px]">{startup.logo_url ? <img src={startup.logo_url} alt={`${startup.name} logo`} className="h-full w-full object-cover" /> : startup.name.slice(0, 2).toUpperCase()}</div>
           <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h1 className="text-3xl font-black tracking-tight text-navy-950 sm:text-4xl">{startup.name}</h1>{startup.is_verified && <span className="inline-flex items-center gap-1 rounded-full bg-navy-900 px-3 py-1.5 text-[11px] font-bold text-white"><span className="text-gold-400">✿</span>Verified</span>}{startup.isOwner && <Link to={`/businesses/${startup.id}/edit`} className="ml-auto text-xs font-semibold text-navy-700 underline sm:hidden">Edit</Link>}</div>

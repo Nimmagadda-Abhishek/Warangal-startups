@@ -333,7 +333,7 @@ export default function BusinessDirectory() {
     }).then((result: any) => {
       const payload = Array.isArray(result) ? result : result?.data;
       const meta = Array.isArray(result) ? null : result?.meta;
-      const records: BusinessRecord[] = (payload ?? []).map((b: any) => ({
+      const records: BusinessRecord[] = (payload ?? []).filter((b: any) => String(b.listing_type ?? b.listingType ?? "").toLowerCase() === "business").map((b: any) => ({
         slug: b.slug,
         name: b.name,
         category: b.category?.name || "Business",

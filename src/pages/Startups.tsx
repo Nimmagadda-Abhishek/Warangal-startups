@@ -181,7 +181,10 @@ export default function Startups() {
   useEffect(() => {
     let active = true;
     businessApi.list({ page: 1, limit: 12, sort: "newest", listingType: "startup" })
-      .then((result: any) => { if (active) setBusinesses(Array.isArray(result?.data) ? result.data : Array.isArray(result) ? result : []); })
+      .then((result: any) => {
+        const rows = Array.isArray(result?.data) ? result.data : Array.isArray(result) ? result : [];
+        if (active) setBusinesses(rows.filter((business: any) => String(business.listing_type ?? business.listingType ?? "").toLowerCase() === "startup"));
+      })
       .catch((reason: unknown) => { if (active) setBusinessesError(reason instanceof Error ? reason.message : "Businesses could not be loaded."); })
       .finally(() => { if (active) setBusinessesLoading(false); });
     return () => { active = false; };
@@ -191,8 +194,8 @@ export default function Startups() {
     <>
       <section className="mx-auto max-w-[1280px] px-4 pt-8 sm:px-6 lg:px-8" aria-labelledby="listed-businesses-heading">
         <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-          <div><p className="text-[11px] font-bold uppercase tracking-[.14em] text-gold-700">WS Hub directory</p><h2 id="listed-businesses-heading" className="mt-1 text-2xl font-black text-navy-900">Businesses & startups</h2><p className="mt-1 text-[13px] text-slate-600">Explore businesses listed by founders in the WS Hub community.</p></div>
-          <Link to="/businesses" className="inline-flex items-center gap-1 text-[12px] font-bold text-navy-800 hover:text-gold-800">Browse all businesses <ArrowRight className="h-4 w-4" /></Link>
+          <div><p className="text-[11px] font-bold uppercase tracking-[.14em] text-gold-700">WS Hub directory</p><h2 id="listed-businesses-heading" className="mt-1 text-2xl font-black text-navy-900">Startups</h2><p className="mt-1 text-[13px] text-slate-600">Explore startup profiles listed by founders in the WS Hub community.</p></div>
+          <Link to="/startups" className="inline-flex items-center gap-1 text-[12px] font-bold text-navy-800 hover:text-gold-800">Browse all startups <ArrowRight className="h-4 w-4" /></Link>
         </div>
         {businessesLoading ? <BusinessCardShimmer count={6} /> : businessesError ? <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-[13px] text-red-700">{businessesError}</div> : businesses.length ? <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {businesses.map((business) => <article key={business.id || business.slug} className="group overflow-hidden rounded-xl border border-line bg-white shadow-[var(--shadow-card)] transition-shadow hover:shadow-lg">
@@ -201,7 +204,7 @@ export default function Startups() {
               <p className="mt-3 line-clamp-2 min-h-10 text-[12.5px] leading-relaxed text-slate-600">{business.description || "Discover this startup on WS Hub."}</p><Link to={`/startups/${encodeURIComponent(business.slug || business.id)}`} className="btn-navy mt-3 flex items-center justify-center gap-1.5 py-2.5 text-[11.5px]">View startup <ArrowRight className="h-3.5 w-3.5" /></Link>
             </div>
           </article>)}
-        </div> : <div className="rounded-xl border border-dashed border-slate-300 bg-white px-5 py-9 text-center text-[13px] text-slate-600">No published business listings are available yet.</div>}
+        </div> : <div className="rounded-xl border border-dashed border-slate-300 bg-white px-5 py-9 text-center text-[13px] text-slate-600">No published startups are available yet.</div>}
       </section>
       <DirectoryPage<Startup>
         entity="Startups" singular="Startup" breadcrumb="Startups"
