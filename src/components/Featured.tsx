@@ -42,7 +42,7 @@ export function FeaturedBusinesses({ items }: { items?: any[] }) {
       <SectionHeader title="Featured Businesses" />
       {list.length === 0 && <EmptyDataCard title="Welcome — no featured businesses yet" text="Real published businesses will appear here once they are added." action="Add a business" to="/dashboard" />}
       {list.length > 0 && (
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-2.5 xl:gap-3">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-2 xl:gap-3">
         {list.map((b, i) => (
           <Reveal key={b.slug || b.name} delay={i * 80} as="article" className="card group flex flex-col overflow-hidden">
             <div className="relative aspect-[4/3] overflow-hidden bg-slate-100">

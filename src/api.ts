@@ -205,6 +205,8 @@ export const paymentApi = {
 
 export const adminApi = {
   stats: () => apiRequest<any>("/api/admin/stats"),
+  homepageFeaturedOrder: () => apiRequest<{ order: "latest" | "rating" }>("/api/admin/settings/homepage-featured-order"),
+  setHomepageFeaturedOrder: (order: "latest" | "rating") => apiRequest<{ order: "latest" | "rating" }>("/api/admin/settings/homepage-featured-order", { method: "PATCH", body: JSON.stringify({ order }) }),
   users: (params: Record<string, string | number | undefined> = {}) => {
     const query = new URLSearchParams();
     Object.entries(params).forEach(([key, value]) => value !== undefined && value !== "" && query.set(key, String(value)));

@@ -36,6 +36,11 @@ export default function AdminPanel() {
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
   const [authorized, setAuthorized] = useState<boolean | null>(null);
+  const [homepageOrder, setHomepageOrder] = useState<"latest" | "rating">("latest");
+  const [homepageOrderSaved, setHomepageOrderSaved] = useState<"latest" | "rating">("latest");
+  const [savingHomepageOrder, setSavingHomepageOrder] = useState(false);
+  const [homepageOrderMessage, setHomepageOrderMessage] = useState("");
+  const [homepageOrderError, setHomepageOrderError] = useState("");
   const metrics: { label: string; value: number | string; icon: LucideIcon }[] = [
     { label: "Users", value: stats?.users ?? "—", icon: Users },
     { label: "Awaiting approval", value: stats?.pendingUsers ?? "—", icon: BadgeCheck },
@@ -69,6 +74,11 @@ export default function AdminPanel() {
 
   useEffect(() => { void load(); }, [load]);
 
+  useEffect(() => {
+    adminApi.homepageFeaturedOrder().then(({ order }) => { setHomepageOrder(order); setHomepageOrderSaved(order); })
+      .catch((reason: unknown) => setHomepageOrderError(reason instanceof Error ? reason.message : "Could not load homepage display order."));
+  }, []);
+
   const changeTab = (next: "users" | "businesses" | "payments") => {
     setTab(next); setPage(1); setQuery(""); setStatus(next === "users" ? "pending" : next === "payments" ? "all" : "all");
   };
@@ -78,6 +88,17 @@ export default function AdminPanel() {
     try { await adminApi.approveUser(id, nextStatus, nextStatus === "rejected" ? "Please contact WS Hub support for next steps." : undefined); await load(); }
     catch (reason) { setError(reason instanceof Error ? reason.message : "Could not update account approval."); }
     finally { setBusy(""); }
+  };
+
+  const saveHomepageOrder = async () => {
+    setSavingHomepageOrder(true); setHomepageOrderError(""); setHomepageOrderMessage("");
+    try {
+      const result = await adminApi.setHomepageFeaturedOrder(homepageOrder);
+      setHomepageOrderSaved(result.order);
+      setHomepageOrderMessage("Homepage display order saved.");
+    } catch (reason) {
+      setHomepageOrderError(reason instanceof Error ? reason.message : "Could not save homepage display order.");
+    } finally { setSavingHomepageOrder(false); }
   };
 
   if (!user) return <Navigate to="/login" replace state={{ from: "/admin" }} />;
@@ -90,6 +111,13 @@ export default function AdminPanel() {
     {authorized === false ? <section className="mt-7 rounded-xl border border-line bg-white p-8 text-center"><ShieldAlert className="mx-auto h-9 w-9 text-amber-600" /><h2 className="mt-3 text-[18px] font-bold text-navy-900">Administrator access required</h2><p className="mt-1 text-[13px] text-slate-600">Sign in with an account assigned the admin role to use this page.</p><Link to="/dashboard" className="btn-navy mt-4 px-5 py-2.5">Return to dashboard</Link></section> : <>
       <section className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {metrics.map(({ label, value, icon: Icon }) => <article key={label} className="card flex items-center gap-3 p-4"><span className="flex h-10 w-10 items-center justify-center rounded-lg bg-navy-50 text-navy-700"><Icon className="h-5 w-5" /></span><span><span className="block text-[20px] font-black text-navy-900">{value}</span><span className="text-[11.5px] text-slate-500">{label}</span></span></article>)}
+      </section>
+
+      <section className="mt-6 rounded-xl border border-line bg-white p-4 shadow-[var(--shadow-card)] sm:flex sm:items-center sm:justify-between sm:gap-5 sm:p-5">
+        <div><h2 className="text-[14px] font-bold text-navy-900">Homepage business and startup order</h2><p className="mt-1 max-w-2xl text-[12px] leading-relaxed text-slate-500">Choose which published listings appear first in Featured Businesses and Featured Startups. The same order applies to both sections.</p>
+          {homepageOrderError && <p role="alert" className="mt-2 text-xs text-red-700">{homepageOrderError}</p>}{homepageOrderMessage && <p role="status" className="mt-2 text-xs font-semibold text-emerald-700">{homepageOrderMessage}</p>}
+        </div>
+        <div className="mt-4 flex shrink-0 items-center gap-2 sm:mt-0"><label className="sr-only" htmlFor="homepage-feature-order">Homepage featured order</label><select id="homepage-feature-order" className={`${inputClass} w-auto min-w-40`} value={homepageOrder} onChange={(event) => { setHomepageOrder(event.target.value as "latest" | "rating"); setHomepageOrderMessage(""); }}><option value="latest">Latest added</option><option value="rating">Highest rated</option></select><button type="button" disabled={savingHomepageOrder || homepageOrder === homepageOrderSaved} onClick={() => void saveHomepageOrder()} className="rounded-md bg-navy-900 px-4 py-2.5 text-xs font-bold text-white hover:bg-navy-800 disabled:cursor-not-allowed disabled:opacity-50">{savingHomepageOrder ? "Saving…" : "Save"}</button></div>
       </section>
 
       <section className="mt-7 overflow-hidden rounded-xl border border-line bg-white shadow-[var(--shadow-card)]">
