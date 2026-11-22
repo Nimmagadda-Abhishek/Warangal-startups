@@ -7,6 +7,7 @@ import { eventsForFounder } from "../events";
 import { DirectoryPage, type FilterValues } from "../components/DirectoryPage";
 import { SaveBtn } from "../components/ui/Actions";
 import { ContactFounderBtn, StartupShareBtn } from "../components/ui/StartupActions";
+import { ShareLinkButton } from "../components/ui/ShareLinkButton";
 import { Modal } from "../components/ui/Modal";
 import { Avatar } from "../components/ProfileShell";
 import { clearCompareStartups, toast, toggleCompareStartup, track, useStore } from "../store";
@@ -201,7 +202,7 @@ export default function Startups() {
           {businesses.map((business) => <article key={business.id || business.slug} className="group overflow-hidden rounded-xl border border-line bg-white shadow-[var(--shadow-card)] transition-shadow hover:shadow-lg">
             <Link to={`/startups/${encodeURIComponent(business.slug || business.id)}`} aria-label={`View ${business.name}`} className="block aspect-[16/8] overflow-hidden bg-navy-50">{(business.cover_url || business.coverUrl) ? <img src={business.cover_url || business.coverUrl} alt="" loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" /> : <div className="flex h-full items-center justify-center text-navy-300"><Building2 className="h-12 w-12" /></div>}</Link>
             <div className="p-4"><div className="flex items-center gap-3">{(business.logo_url || business.logoUrl) ? <img src={business.logo_url || business.logoUrl} alt="" className="h-11 w-11 rounded-lg border border-line object-cover" /> : <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-navy-800 text-sm font-black text-white">{String(business.name || "WS").slice(0, 2).toUpperCase()}</span>}<div className="min-w-0"><h3 className="truncate text-[15px] font-bold text-navy-900"><Link to={`/startups/${encodeURIComponent(business.slug || business.id)}`} className="hover:text-gold-800">{business.name}</Link></h3><p className="truncate text-[11.5px] text-slate-500">{business.category?.name || business.category || "Startup"}{business.city ? ` · ${business.city}` : ""}</p></div></div>
-              <p className="mt-3 line-clamp-2 min-h-10 text-[12.5px] leading-relaxed text-slate-600">{business.description || "Discover this startup on WS Hub."}</p><Link to={`/startups/${encodeURIComponent(business.slug || business.id)}`} className="btn-navy mt-3 flex items-center justify-center gap-1.5 py-2.5 text-[11.5px]">View startup <ArrowRight className="h-3.5 w-3.5" /></Link>
+              <p className="mt-3 line-clamp-2 min-h-10 text-[12.5px] leading-relaxed text-slate-600">{business.description || "Discover this startup on WS Hub."}</p><div className="mt-3 grid grid-cols-[1fr_auto] gap-2"><Link to={`/startups/${encodeURIComponent(business.slug || business.id)}`} className="btn-navy flex items-center justify-center gap-1.5 py-2.5 text-[11.5px]">View startup <ArrowRight className="h-3.5 w-3.5" /></Link><ShareLinkButton slug={business.slug || business.id} name={business.name} /></div>
             </div>
           </article>)}
         </div> : <div className="rounded-xl border border-dashed border-slate-300 bg-white px-5 py-9 text-center text-[13px] text-slate-600">No published startups are available yet.</div>}
@@ -224,3 +225,5 @@ export default function Startups() {
     </>
   );
 }
+
+
