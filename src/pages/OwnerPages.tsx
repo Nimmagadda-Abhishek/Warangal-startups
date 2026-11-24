@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link, Navigate, useLocation, useParams } from "react-router-dom";
 import { ArrowLeft, ArrowRight, BadgeCheck, Building2, CheckCircle2, ExternalLink, Globe2, ImagePlus, LoaderCircle, MailCheck, MapPin, Plus, Save, Store, UserRound } from "lucide-react";
 import { authApi, businessApi, getAccessToken, homeApi, profileApi, setSession, type Session } from "../api";
@@ -9,6 +9,17 @@ import { login, useStore, type Role } from "../store";
 type ProfileForm = { full_name: string; username: string; bio: string; phone: string; city: string; country: string; socialLinks: Record<string, string> };
 const profileSocialPlatforms = ["instagram", "linkedin", "portfolio", "website", "youtube", "x"];
 const blankProfile: ProfileForm = { full_name: "", username: "", bio: "", phone: "", city: "", country: "", socialLinks: {} };
+
+function readSavedDraft<T>(key: string): T | undefined {
+  try {
+    const saved = localStorage.getItem(key);
+    if (!saved) return undefined;
+    const value: unknown = JSON.parse(saved);
+    return value && typeof value === "object" ? value as T : undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 function PageHeading({ eyebrow, title, description }: { eyebrow: string; title: string; description: string }) {
   return <div className="mb-7"><p className="text-[11px] font-bold uppercase tracking-[.14em] text-gold-800">{eyebrow}</p><h1 className="mt-2 text-[30px] font-black tracking-tight text-navy-900 sm:text-[36px]">{title}</h1><p className="mt-2 max-w-2xl text-[13.5px] leading-relaxed text-slate-600">{description}</p></div>;
@@ -33,6 +44,8 @@ function formError(reason: unknown, fallback: string) {
 
 export function EditProfilePage() {
   const user = useStore((state) => state.user);
+  const profileDraftKey = user?.email ? `wshub:draft:profile:${user.email.toLowerCase()}` : "";
+  const lastSavedProfile = useRef<string | null>(null);
   const [profile, setProfile] = useState<ProfileForm>(blankProfile);
   const [avatar, setAvatar] = useState("");
   const [loading, setLoading] = useState(true);
@@ -47,17 +60,29 @@ export function EditProfilePage() {
     profileApi.get().then((result) => {
       const data = result?.data?.profile ?? result?.data ?? result?.profile ?? result ?? {};
       if (current) {
-        setProfile({
+        const serverProfile: ProfileForm = {
           full_name: data.full_name || "", username: data.username || "", bio: data.bio || "",
           phone: data.phone || "", city: data.city || data.location || "", country: data.country || "",
           socialLinks: data.social_links && typeof data.social_links === "object" ? data.social_links : data.socialLinks && typeof data.socialLinks === "object" ? data.socialLinks : {},
-        });
+        };
+        lastSavedProfile.current = JSON.stringify(serverProfile);
+        const savedDraft = profileDraftKey ? readSavedDraft<ProfileForm>(profileDraftKey) : undefined;
+        setProfile(savedDraft ? { ...serverProfile, ...savedDraft, socialLinks: { ...serverProfile.socialLinks, ...savedDraft.socialLinks } } : serverProfile);
         setAvatar(data.avatar_url || "");
       }
     }).catch((reason) => current && setError(reason instanceof Error ? reason.message : "Could not load your profile."))
       .finally(() => current && setLoading(false));
     return () => { current = false; };
-  }, []);
+  }, [user?.email]);
+
+  useEffect(() => {
+    if (loading || !profileDraftKey) return;
+    try {
+      const serialized = JSON.stringify(profile);
+      if (serialized === lastSavedProfile.current) localStorage.removeItem(profileDraftKey);
+      else localStorage.setItem(profileDraftKey, serialized);
+    } catch { /* Storage may be disabled or full; the form remains usable. */ }
+  }, [profile, loading, profileDraftKey]);
 
   if (!user && !getAccessToken()) return <Navigate to="/login?next=%2Fprofile%2Fedit" replace />;
 
@@ -66,8 +91,9 @@ export function EditProfilePage() {
   const submit = async (event: FormEvent) => {
     event.preventDefault(); setMessage(""); setError(""); setSaving(true);
     try {
-      const result = await profileApi.update({ fullName: profile.full_name.trim(), username: profile.username.trim().toLowerCase(), bio: profile.bio.trim(), phone: profile.phone.trim(), city: profile.city.trim(), country: profile.country.trim(), socialLinks: Object.fromEntries(Object.entries(profile.socialLinks).map(([key, value]) => [key, value.trim()]).filter(([, value]) => value)) });
-      if (result?.full_name) setProfile((old) => ({ ...old, full_name: result.full_name }));
+      await profileApi.update({ fullName: profile.full_name.trim(), username: profile.username.trim().toLowerCase(), bio: profile.bio.trim(), phone: profile.phone.trim(), city: profile.city.trim(), country: profile.country.trim(), socialLinks: Object.fromEntries(Object.entries(profile.socialLinks).map(([key, value]) => [key, value.trim()]).filter(([, value]) => value)) });
+      lastSavedProfile.current = JSON.stringify(profile);
+      if (profileDraftKey) localStorage.removeItem(profileDraftKey);
       setMessage("Your profile was saved."); window.alert("Your profile was saved successfully.");
     } catch (reason) { const message = formError(reason, "Could not save your profile."); setError(message); window.alert(message); }
     finally { setSaving(false); }
@@ -86,6 +112,7 @@ export function EditProfilePage() {
   return <div className="page-in mx-auto max-w-[1040px] px-4 pb-24 pt-9 sm:px-6 lg:px-8 lg:pb-14">
     <Link to="/dashboard" className="mb-6 inline-flex items-center gap-2 text-[12px] font-semibold text-navy-700 hover:text-navy-900"><ArrowLeft className="h-4 w-4" /> Back to dashboard</Link>
     <PageHeading eyebrow="Your account" title="Edit your profile" description="Keep your details current so people across the WS Hub community can find and connect with you." />
+    <p className="-mt-4 mb-5 text-[11.5px] text-slate-500">Your unfinished changes are saved on this device automatically until you save your profile.</p>
     {error && <Notice error>{error}</Notice>}{message && <Notice>{message}</Notice>}
     {loading ? <div role="status" aria-label="Loading your profile" className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px]"><div className="card space-y-4 p-6">{[0, 1, 2, 3, 4, 5].map((item) => <Shimmer key={item} className="h-11 w-full" />)}</div><div className="card space-y-4 p-6"><Shimmer className="h-24 w-24 rounded-full" /><Shimmer className="h-10 w-full" /><Shimmer className="h-10 w-full" /></div></div> : (
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
@@ -205,6 +232,8 @@ export function EditBusinessPage() {
   const user = useStore((state) => state.user);
   const location = useLocation();
   const { id = "" } = useParams();
+  const businessDraftKey = user?.email ? `wshub:draft:business:${user.email.toLowerCase()}:${id}` : "";
+  const lastSavedBusiness = useRef<string | null>(null);
   const [form, setForm] = useState<BusinessForm>(blankBusiness);
   const [categories, setCategories] = useState<any[]>([]);
   const [services, setServices] = useState<BusinessService[]>([]);
@@ -227,7 +256,7 @@ export function EditBusinessPage() {
       const startupTraction = startupDetails.traction || {};
       const startupFunding = startupDetails.funding || {};
       setCategories(Array.isArray(categoryResult?.data) ? categoryResult.data : Array.isArray(categoryResult) ? categoryResult : []);
-      setForm({
+      const serverForm: BusinessForm = {
         ...blankBusiness, name: business.name || "", description: business.description || "", mission: business.mission || "", vision: business.vision || "", categoryId: business.category_id || business.categoryId || "",
         email: business.email || "", phone: business.phone || "", website: business.website || "", address: business.address || "", mapUrl: business.map_url || business.mapUrl || "",
         city: business.city || "", state: business.state || "", country: business.country || "", postalCode: business.postal_code || business.postalCode || "",
@@ -247,13 +276,23 @@ export function EditBusinessPage() {
         },
         products: Array.isArray(business.products) ? business.products.map((product: any) => ({ name: product.name || "", description: product.description || "", price: product.price || "", image: product.image || "" })) : [],
         gallery: Array.isArray(business.gallery) ? business.gallery.map((image: any) => ({ image: image.image || "", label: image.label || image.caption || "", group: image.group || "Office" })) : [],
-      });
+      };
+      lastSavedBusiness.current = JSON.stringify(serverForm);
+      setForm(businessDraftKey ? readSavedDraft<BusinessForm>(businessDraftKey) ?? serverForm : serverForm);
       const loadedServices = Array.isArray(serviceResult) ? serviceResult : Array.isArray(serviceResult?.data) ? serviceResult.data : Array.isArray(serviceResult?.data?.data) ? serviceResult.data.data : [];
       setServices(loadedServices);
     }).catch((reason) => current && setError(reason instanceof Error ? reason.message : "Could not load this business."))
       .finally(() => current && setLoading(false));
     return () => { current = false; };
-  }, [id]);
+  }, [id, user?.email]);
+  useEffect(() => {
+    if (loading || !businessDraftKey) return;
+    try {
+      const serialized = JSON.stringify(form);
+      if (serialized === lastSavedBusiness.current) localStorage.removeItem(businessDraftKey);
+      else localStorage.setItem(businessDraftKey, serialized);
+    } catch { /* Storage may be disabled or full; the form remains usable. */ }
+  }, [form, loading, businessDraftKey]);
   if (!user && !getAccessToken()) return <Navigate to={`/login?next=${encodeURIComponent(`/businesses/${id}/edit`)}`} replace />;
 
   const update = (key: BusinessTextKey, value: string) => setForm((old) => ({ ...old, [key]: value }));
@@ -330,6 +369,8 @@ export function EditBusinessPage() {
     event.preventDefault(); setSaving(true); setError(""); setMessage(""); setMissing([]);
     try {
       await businessApi.update(id, businessPayload());
+      lastSavedBusiness.current = JSON.stringify(form);
+      if (businessDraftKey) localStorage.removeItem(businessDraftKey);
       setMessage("Business details saved."); window.alert("Your business profile was saved successfully.");
     } catch (reason) {
       const details = (reason as { details?: { missing?: string[] } })?.details;
@@ -361,7 +402,10 @@ export function EditBusinessPage() {
     if (required.length || invalid.length) { const message = [...required.length ? [`Complete the required fields: ${required.join(", ")}.`] : [], ...invalid].join(" "); setMissing(required); setError(message); window.alert(message); setSaving(false); return; }
     try {
       await businessApi.update(id, payload);
-      await businessApi.publish(id); setMessage("Your business is now published."); window.alert("Your business profile was published successfully.");
+      await businessApi.publish(id);
+      lastSavedBusiness.current = JSON.stringify(form);
+      if (businessDraftKey) localStorage.removeItem(businessDraftKey);
+      setMessage("Your business is now published."); window.alert("Your business profile was published successfully.");
     }
     catch (reason) { const details = (reason as { details?: { missing?: string[] } })?.details; setMissing(details?.missing || []); const message = formError(reason, "Could not publish your business."); setError(message); window.alert(message); }
     finally { setSaving(false); }
@@ -371,6 +415,7 @@ export function EditBusinessPage() {
   return <div className="page-in mx-auto max-w-[1040px] px-4 pb-24 pt-9 sm:px-6 lg:px-8 lg:pb-14">
     <Link to="/businesses/manage" className="mb-6 inline-flex items-center gap-2 text-[12px] font-semibold text-navy-700 hover:text-navy-900"><ArrowLeft className="h-4 w-4" /> Your businesses</Link>
     <PageHeading eyebrow="Business listing" title="Edit business profile" description="Add the details customers need to discover, understand and contact your business." />
+    <p className="-mt-4 mb-5 text-[11.5px] text-slate-500">Your unfinished changes are saved on this device automatically until you save or publish.</p>
     {error && <Notice error>{error}</Notice>}{message && <Notice>{message}</Notice>}{missing.length > 0 && <div className="mb-4 rounded-lg bg-amber-50 px-4 py-3 text-[12px] text-amber-900"><p className="font-bold">Complete these fields to publish</p><p className="mt-1">{missing.join(", ")}</p></div>}
     {loading ? <div role="status" aria-label="Loading business profile" className="space-y-5"><div className="card space-y-3 p-6"><Shimmer className="h-6 w-1/3" /><Shimmer className="h-11 w-full" /><Shimmer className="h-11 w-full" /><Shimmer className="h-24 w-full" /></div><div className="card space-y-3 p-6"><Shimmer className="h-6 w-1/4" /><Shimmer className="h-28 w-full" /><Shimmer className="h-11 w-full" /></div></div> : <form onSubmit={save} className="space-y-5">
       <div className="mb-4 rounded-lg border border-gold-200 bg-gold-50 px-4 py-3 text-[12px] text-navy-900"><span className="font-bold">* Required to publish.</span> Business name, category, description and city are required. Enter at least one contact method: business email or phone.</div>
