@@ -46,6 +46,7 @@ export interface BusinessRecord {
   mission: string;
   vision: string;
   founder: string;
+  founderId?: string;
   employees: string;
   established: number;
   hours: string;
@@ -79,6 +80,17 @@ export interface BusinessRecord {
 }
 
 export const categories = [];
+
+export const listingCategorySlugs = [
+  "real-estate-construction", "finance-insurance", "manufacturing", "agriculture-farming",
+  "logistics-transport", "travel-hospitality", "marketing-media", "legal-accounting",
+  "wholesale-distribution", "energy-sustainability",
+] as const;
+
+export function filterListingCategories<T extends { slug: string }>(items: T[]): T[] {
+  const order = new Map(listingCategorySlugs.map((slug, index) => [slug, index]));
+  return items.filter((item) => order.has(item.slug)).sort((a, b) => order.get(a.slug)! - order.get(b.slug)!);
+}
 
 export const industries = [];
 

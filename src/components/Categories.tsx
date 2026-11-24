@@ -1,53 +1,15 @@
-import {
-  Rocket,
-  Building2,
-  Users,
-  TrendingUp,
-  HeartPulse,
-  Home,
-  Cpu,
-  Factory,
-  Leaf,
-  GraduationCap,
-  Landmark,
-  Car,
-  Briefcase,
-  MoreHorizontal,
-  type LucideIcon,
-} from "lucide-react";
+import { Building2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Reveal } from "./Reveal";
-
-interface Category {
-  label: string;
-  icon: LucideIcon;
-  to: string;
-}
-
-const categories: Category[] = [
-  { label: "Startups", icon: Rocket, to: "/startups" },
-  { label: "Businesses", icon: Building2, to: "/businesses" },
-  { label: "Founders", icon: Users, to: "/founders" },
-  { label: "Investors", icon: TrendingUp, to: "/investors" },
-  { label: "Healthcare", icon: HeartPulse, to: "/businesses?category=Healthcare" },
-  { label: "Real Estate", icon: Home, to: "/businesses?category=Real%20Estate" },
-  { label: "Technology", icon: Cpu, to: "/businesses?category=Technology" },
-  { label: "Manufacturing", icon: Factory, to: "/businesses?category=Manufacturing" },
-  { label: "Agriculture", icon: Leaf, to: "/businesses?category=Agriculture" },
-  { label: "Education", icon: GraduationCap, to: "/businesses?category=Education" },
-  { label: "Finance", icon: Landmark, to: "/businesses?category=Finance" },
-  { label: "Automobile", icon: Car, to: "/businesses?category=Automobile" },
-  { label: "Professional Services", icon: Briefcase, to: "/businesses?category=Professional%20Services" },
-  { label: "More", icon: MoreHorizontal, to: "/businesses" },
-];
+import { filterListingCategories } from "../businesses";
 
 export function Categories({ items }: { items?: { name: string; slug: string }[] }) {
-  if (!items?.length) return null;
-  const available = items.slice(0, 14).map((item) => ({
+  const available = filterListingCategories(items || []).map((item) => ({
     label: item.name,
     icon: Building2,
     to: `/businesses?category=${encodeURIComponent(item.slug)}`,
   }));
+  if (!available.length) return null;
   return (
     <section className="relative z-10 -mt-14 lg:-mt-16" aria-label="Browse by category">
       <div className="mx-auto max-w-[1280px] px-4 sm:px-6 lg:px-8">

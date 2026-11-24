@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, type MouseEvent } from "react";
 import { Link } from "react-router-dom";
-import { BadgeCheck, Bookmark, CalendarDays, MapPin, Phone } from "lucide-react";
+import { BadgeCheck, Bookmark, CalendarDays, MapPin, Phone, Share2, UserRound } from "lucide-react";
 import type { BusinessRecord } from "../businesses";
 import { Stars } from "./Stars";
 import { getState, toggleSaved, useStore } from "../store";
@@ -103,6 +103,16 @@ interface Props {
 }
 
 export function BusinessCard({ b, view = "grid" }: Props) {
+  const shareCard = async (event: MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    const url = `${window.location.origin}${window.location.pathname}#/businesses/${encodeURIComponent(b.slug)}`;
+    try {
+      if (navigator.share) await navigator.share({ title: `${b.name} digital card`, text: `Explore ${b.name} on WS Hub`, url });
+      else await navigator.clipboard.writeText(url);
+    } catch (error) {
+      if ((error as DOMException)?.name !== "AbortError") await navigator.clipboard?.writeText(url).catch(() => undefined);
+    }
+  };
   if (view === "list") {
     return (
       <article className="card group grid overflow-hidden sm:grid-cols-[240px_1fr]">
@@ -126,7 +136,8 @@ export function BusinessCard({ b, view = "grid" }: Props) {
             </div>
             <div className="hidden sm:block"><Stars rating={b.rating} reviews={b.reviews} /></div>
           </div>
-          <p className="mt-3 text-[12.5px] leading-relaxed text-slate-600">{b.description}</p>
+          {b.founder && <p className="mt-2 inline-flex items-center gap-1.5 text-[11.5px] font-medium text-navy-700"><UserRound className="h-3.5 w-3.5" /> Founder: {b.founderId ? <Link to={`/members/${encodeURIComponent(b.founderId)}`} className="hover:underline">{b.founder}</Link> : b.founder}</p>}
+          <p className="mt-2 text-[12.5px] leading-relaxed text-slate-600">{b.description}</p>
           <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-500">
             <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" /> {b.location}</span>
             <span className="inline-flex items-center gap-1"><CalendarDays className="h-3 w-3" /> Est. {b.established}</span>
@@ -137,7 +148,7 @@ export function BusinessCard({ b, view = "grid" }: Props) {
               <span key={t} className="rounded-md bg-slate-100 px-2 py-1 text-[10.5px] font-medium text-slate-600">{t}</span>
             ))}
           </div>
-          <div className="mt-auto pt-4"><ActionButtons b={b} compact /></div>
+          <div className="mt-auto flex items-center gap-2 pt-4"><div className="min-w-0 flex-1"><ActionButtons b={b} compact /></div><button type="button" onClick={shareCard} aria-label={`Share ${b.name} digital card`} className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-slate-300 px-3 py-2 text-[11px] font-semibold text-navy-800 hover:bg-navy-50"><Share2 className="h-3.5 w-3.5" /><span className="hidden sm:inline">Share card</span></button></div>
         </div>
       </article>
     );
@@ -166,6 +177,7 @@ export function BusinessCard({ b, view = "grid" }: Props) {
               <Link to={`/businesses/${b.slug}`} className="transition-colors hover:text-navy-600">{b.name}</Link>
             </h3>
             <p className="text-[11px] text-slate-500">{b.industry}</p>
+            {b.founder && <p className="mt-0.5 truncate text-[10.5px] font-medium text-navy-700">Founder: {b.founderId ? <Link to={`/members/${encodeURIComponent(b.founderId)}`} className="hover:underline">{b.founder}</Link> : b.founder}</p>}
             <p className="mt-1 inline-flex items-center gap-1 text-[11px] text-slate-500"><MapPin className="h-3 w-3" strokeWidth={2} /> {b.location}</p>
           </div>
           <div className="shrink-0 pt-0.5"><Stars rating={b.rating} reviews={b.reviews} /></div>
@@ -176,7 +188,7 @@ export function BusinessCard({ b, view = "grid" }: Props) {
             <span key={t} className="rounded-md bg-slate-100 px-2 py-1 text-[10.5px] font-medium text-slate-600 transition-colors group-hover:bg-navy-50 group-hover:text-navy-800">{t}</span>
           ))}
         </div>
-        <div className="mt-3.5"><ActionButtons b={b} compact /></div>
+        <div className="mt-3.5 flex items-center gap-2"><div className="min-w-0 flex-1"><ActionButtons b={b} compact /></div><button type="button" onClick={shareCard} aria-label={`Share ${b.name} digital card`} className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md border border-slate-300 px-2.5 text-[11px] font-semibold text-navy-800 hover:bg-navy-50"><Share2 className="h-3.5 w-3.5" /><span className="hidden lg:inline">Share</span></button></div>
       </div>
     </article>
   );

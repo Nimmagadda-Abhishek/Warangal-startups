@@ -13,7 +13,7 @@ import {
   Star,
   X,
 } from "lucide-react";
-import { industries, locations, popularSearches, type BusinessRecord } from "../businesses";
+import { filterListingCategories, industries, locations, popularSearches, type BusinessRecord } from "../businesses";
 import { EmptyDataCard } from "../components/EmptyDataCard";
 import { BusinessCard } from "../components/BusinessCard";
 import { Reveal } from "../components/Reveal";
@@ -249,7 +249,7 @@ export default function BusinessDirectory() {
   useEffect(() => {
     let active = true;
     homeApi.categories().then((items: any[]) => {
-      if (active) setCategoryOptions(Array.isArray(items) ? items : []);
+      if (active) setCategoryOptions(filterListingCategories(Array.isArray(items) ? items : []));
     }).catch(() => { if (active) setCategoryOptions([]); });
     return () => { active = false; };
   }, []);
@@ -344,7 +344,8 @@ export default function BusinessDirectory() {
         description: b.description || "",
         mission: "",
         vision: "",
-        founder: "",
+        founder: b.owner?.full_name || "",
+        founderId: b.owner?.id || "",
         employees: b.employee_count == null ? "Not listed" : String(b.employee_count),
         established: Number(b.established_year || 0),
         hours: "",
