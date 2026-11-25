@@ -6,6 +6,7 @@ export interface Plan {
   tagline: string;
   monthly: number;
   yearly: number;
+  monthlyAutopay?: number;
   popular?: boolean;
   cta: string;
   highlights: string[];
@@ -15,7 +16,7 @@ export interface Plan {
 export const plans: Plan[] = [
   { id: "free", name: "Free", tagline: "Get started with basic access.", monthly: 0, yearly: 0, cta: "Get Started", audience: "Explorers & students", highlights: ["Browse all profiles", "1 event per month", "Limited messaging (5/mo)", "Community access"] },
   { id: "business", name: "Business", tagline: "Get discovered by customers and partners.", monthly: 499, yearly: 4990, cta: "Choose Business", audience: "Businesses & SMEs", highlights: ["Verified badge", "Priority listing in directory", "Profile analytics", "Unlimited events", "Post opportunities"] },
-  { id: "premium", name: "Premium", tagline: "Best for active founders & investors.", monthly: 1999, yearly: 19990, popular: true, cta: "Choose Premium", audience: "Founders & investors", highlights: ["All Business benefits", "Investor Connect & VIP events", "Direct messaging (unlimited)", "Featured profile & stories", "Investor network access", "Priority support"] },
+  { id: "premium", name: "WS Hub Membership", tagline: "Build meaningful connections and unlock more opportunities.", monthly: 3100, monthlyAutopay: 299, yearly: 5200, popular: true, cta: "Become a Member", audience: "Founders, professionals & investors", highlights: ["Access to exclusive member events", "Connect with founders, investors and professionals", "Priority access to opportunities", "Learning resources and workshops", "A supportive local business community"] },
   { id: "enterprise", name: "Enterprise", tagline: "For institutions, corporates & accelerators.", monthly: 4999, yearly: 49990, cta: "Choose Enterprise", audience: "Corporates, banks, institutions", highlights: ["All Premium benefits", "Dedicated account manager", "Custom events & workshops", "Team seats (up to 10)", "API & data exports", "Sponsorship placements"] },
 ];
 
@@ -45,11 +46,11 @@ export const GST = 0.18;
 export const testimonials: { name: string; role: string; text: string; to: string }[] = [];
 
 export const membershipFaq = [
-  { q: "Can I switch plans anytime?", a: "Yes. Upgrades apply immediately and you only pay the difference; downgrades apply at renewal." },
-  { q: "Is GST included?", a: "Prices are exclusive of 18% GST, shown at checkout. GST invoices are available in your dashboard." },
+  { q: "What are the membership payment options?", a: "Choose monthly billing with a first payment of ₹3,100, followed by ₹299 monthly autopay, or choose ₹5,200 yearly billing that renews automatically each year." },
+  { q: "Can I switch plans anytime?", a: "Contact the WS Hub team to change your account membership billing option." },
+  { q: "How does yearly billing work?", a: "The ₹5,200 yearly plan renews automatically once a year through Razorpay." },
   { q: "What payment methods do you accept?", a: "UPI, credit/debit cards and net banking." },
-  { q: "Can I pause my membership?", a: "Yes — pause for up to 3 months from your dashboard; you won't be billed while paused." },
-  { q: "Do you offer student pricing?", a: "Student founders get Business at 50% off with a valid college ID. Contact support." },
+  { q: "Can I cancel autopay?", a: "Contact the WS Hub team to cancel future monthly or yearly autopay charges." },
 ];
 
 export const benefitIcons = ["Exclusive Events", "Networking", "Priority Access", "Learning Resources", "Community Support"];

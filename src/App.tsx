@@ -19,6 +19,7 @@ import { AuthPage, ComingSoon, ErrorBoundary, NotFound } from "./pages/Misc";
 import { AuthResetPasswordPage, BusinessManagerPage, EditBusinessPage, EditProfilePage, EmailVerifiedPage } from "./pages/OwnerPages";
 import AdminPanel from "./pages/AdminPanel";
 import LegalPage from "./pages/LegalPages";
+import Membership, { Checkout, PlanDetail } from "./pages/Membership";
 
 const roadmap = ["requirements", "collaboration", "jobs", "profile", "map", "achievements", "reviews", "help-center", "plans", "compare", "for-businesses", "for-startups"];
 
@@ -51,7 +52,10 @@ export default function App() {
               <Route path="/events" element={<Events />} />
               <Route path="/events/:slug" element={<EventDetails />} />
               <Route path="/stories/*" element={<ComingSoon />} />
-              <Route path="/membership/*" element={<ComingSoon />} />
+              <Route path="/membership" element={<Membership />} />
+              <Route path="/membership/checkout" element={<Checkout />} />
+              <Route path="/membership/:plan" element={<PlanDetail />} />
+              <Route path="/membership/*" element={<Membership />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/profile/edit" element={<EditProfilePage />} />
               <Route path="/businesses/manage" element={<BusinessManagerPage />} />

@@ -193,10 +193,11 @@ export const businessApi = {
 export const paymentApi = {
   plans: () => apiRequest<any[]>("/api/payments/plans", { auth: false }),
   listingFeeCheckout: (businessId: string) => apiRequest<any>("/api/payments/listing-fee/checkout", { method: "POST", body: JSON.stringify({ businessId }) }),
-  checkout: (planCode: string, businessId: string) =>
-    apiRequest<any>("/api/payments/checkout", { method: "POST", body: JSON.stringify({ planCode, businessId }) }),
-  verify: (razorpay_order_id: string, razorpay_payment_id: string, razorpay_signature: string) =>
-    apiRequest<{ status: string; message: string }>("/api/payments/verify", { method: "POST", body: JSON.stringify({ razorpay_order_id, razorpay_payment_id, razorpay_signature }) }),
+  checkout: (planCode: string) =>
+    apiRequest<any>("/api/payments/checkout", { method: "POST", body: JSON.stringify({ planCode }) }),
+  membership: () => apiRequest<any>("/api/payments/membership"),
+  verify: (payment: { razorpay_order_id?: string; razorpay_subscription_id?: string; razorpay_payment_id: string; razorpay_signature: string }) =>
+    apiRequest<{ status: string; message: string }>("/api/payments/verify", { method: "POST", body: JSON.stringify(payment) }),
   signupStatus: () => apiRequest<{ paid: boolean; payment: any; amountMinor: number; currency: string }>("/api/payments/signup/status"),
   signupCheckout: () => apiRequest<any>("/api/payments/signup/checkout", { method: "POST", body: "{}" }),
   history: (page = 1, limit = 12) => apiRequest<{ data: any[]; meta: ApiMeta }>(`/api/payments/history?page=${page}&limit=${limit}`),

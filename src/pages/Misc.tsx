@@ -51,7 +51,6 @@ const roadmap: Record<string, { title: string; text: string; milestone: number; 
   "for-startups": { title: "Membership for Startups", text: "Premium plan details.", milestone: 15, links: [{ label: "Premium plan", to: "/membership/premium" }] },
   profile: { title: "Profile", text: "Your public profile editor.", milestone: 17, links: [{ label: "Go to dashboard", to: "/dashboard" }] },
   stories: { title: "Stories", text: "Founder journeys and community stories.", milestone: 18, links: [{ label: "Explore founders", to: "/founders" }] },
-  membership: { title: "Membership", text: "Membership plans and benefits.", milestone: 18, links: [{ label: "Explore founders", to: "/founders" }] },
 };
 
 export function ComingSoon() {

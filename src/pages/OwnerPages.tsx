@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link, Navigate, useLocation, useParams } from "react-router-dom";
 import { ArrowLeft, ArrowRight, BadgeCheck, Building2, CheckCircle2, ExternalLink, Globe2, ImagePlus, LoaderCircle, MailCheck, MapPin, Plus, Save, Store, UserRound } from "lucide-react";
-import { authApi, businessApi, getAccessToken, homeApi, profileApi, setSession, type Session } from "../api";
+import { authApi, businessApi, getAccessToken, homeApi, paymentApi, profileApi, setSession, type Session } from "../api";
 import { filterListingCategories } from "../businesses";
-import { Field, inputCls, textareaCls } from "../components/ui/Modal";
+import { Field, inputCls, Modal, textareaCls } from "../components/ui/Modal";
 import { Shimmer } from "../components/ui/Shimmer";
 import { login, useStore, type Role } from "../store";
 
@@ -41,6 +41,22 @@ function formError(reason: unknown, fallback: string) {
     return `${error.message || "Please check the entered details."} ${details.join("; ")}`;
   }
   return error.message || fallback;
+}
+
+type RazorpayResponse = { razorpay_order_id?: string; razorpay_subscription_id?: string; razorpay_payment_id: string; razorpay_signature: string };
+type RazorpayOptions = { key: string; order_id?: string; subscription_id?: string; amount?: number; currency?: string; name: string; description: string; prefill?: { email?: string }; handler: (response: RazorpayResponse) => void | Promise<void>; modal?: { ondismiss?: () => void }; theme?: { color: string } };
+declare global { interface Window { Razorpay?: new (options: RazorpayOptions) => { open: () => void } } }
+let razorpayLoader: Promise<void> | null = null;
+function loadRazorpayCheckout() {
+  if (window.Razorpay) return Promise.resolve();
+  if (!razorpayLoader) razorpayLoader = new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.onload = () => resolve();
+    script.onerror = () => { razorpayLoader = null; reject(new Error("Could not load Razorpay checkout. Check your connection and try again.")); };
+    document.body.appendChild(script);
+  });
+  return razorpayLoader;
 }
 
 export function EditProfilePage() {
@@ -174,11 +190,14 @@ export function BusinessManagerPage() {
   const startupCount = items.filter((item) => item.listing_type === "startup").length;
   const selectedTypeCount = listingType === "startup" ? startupCount : businessCount;
   const changeStatus = async (item: BusinessItem) => {
+    if (item.status !== "published") {
+      window.location.hash = `#/businesses/${encodeURIComponent(item.id)}/edit`;
+      return;
+    }
     setBusy(item.id); setError(""); setNotice("");
     try {
-      if (item.status === "published") await businessApi.unpublish(item.id);
-      else await businessApi.publish(item.id);
-      setNotice(item.status === "published" ? "The listing is now a draft." : "Your business is published on WS Hub.");
+      await businessApi.unpublish(item.id);
+      setNotice("The listing is now a draft.");
       setRefresh((value) => value + 1);
     } catch (reason) { setError(reason instanceof Error ? reason.message : "Could not update the listing status."); }
     finally { setBusy(""); }
@@ -186,7 +205,7 @@ export function BusinessManagerPage() {
 
   return <div className="page-in mx-auto max-w-[1080px] px-4 pb-24 pt-9 sm:px-6 lg:px-8 lg:pb-14">
     <Link to="/dashboard" className="mb-6 inline-flex items-center gap-2 text-[12px] font-semibold text-navy-700 hover:text-navy-900"><ArrowLeft className="h-4 w-4" /> Back to dashboard</Link>
-    <PageHeading eyebrow="Business owner space" title="Your businesses" description="Create a draft, complete your details, and publish your business profile to the WS Hub directory." />
+    <PageHeading eyebrow="Business owner space" title="Your businesses" description="Create a draft, complete its details, choose a membership package, and pay securely to publish your business or startup listing." />
     {error && <Notice error>{error}</Notice>}{notice && <Notice>{notice}</Notice>}
     <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
       <section className="card p-5 sm:p-6"><div className="flex items-center justify-between gap-3"><div><h2 className="text-[16px] font-bold text-navy-900">Your listings</h2><p className="mt-1 text-[12px] text-slate-500">Up to two businesses and two startups. Drafts remain private until published.</p></div><span className="rounded-full bg-navy-50 px-3 py-1 text-[11px] font-bold text-navy-700">{businessCount} / 2 businesses · {startupCount} / 2 startups</span></div>
@@ -251,6 +270,9 @@ export function EditBusinessPage() {
   const [error, setError] = useState("");
   const [missing, setMissing] = useState<string[]>((location.state as { missing?: string[] } | null)?.missing || []);
   const [uploadingMedia, setUploadingMedia] = useState<string | null>(null);
+  const [membershipDialogOpen, setMembershipDialogOpen] = useState(false);
+  const [paymentBusy, setPaymentBusy] = useState(false);
+  const [paymentError, setPaymentError] = useState("");
   useEffect(() => {
     document.title = "Edit business — WS Hub";
     let current = true;
@@ -407,13 +429,64 @@ export function EditBusinessPage() {
     if (required.length || invalid.length) { const message = [...required.length ? [`Complete the required fields: ${required.join(", ")}.`] : [], ...invalid].join(" "); setMissing(required); setError(message); window.alert(message); setSaving(false); return; }
     try {
       await businessApi.update(id, payload);
-      await businessApi.publish(id);
       lastSavedBusiness.current = JSON.stringify(form);
       if (businessDraftKey) localStorage.removeItem(businessDraftKey);
-      setMessage("Your business is now published."); window.alert("Your business profile was published successfully.");
+      const existingResult = await paymentApi.subscription(id) as any;
+      const existingSubscription = existingResult?.data ?? existingResult;
+      const existingPlan = existingSubscription?.plan?.code;
+      const periodEnd = existingSubscription?.current_period_end ? new Date(existingSubscription.current_period_end) : null;
+      if (existingSubscription?.status === "active" && ["member_monthly", "member_yearly"].includes(existingPlan) && (!periodEnd || periodEnd > new Date())) {
+        await businessApi.publish(id);
+        setMessage("Your active membership has been confirmed. The listing is now live.");
+        window.location.hash = "#/businesses/manage";
+        return;
+      }
+      setMembershipDialogOpen(true);
+      setMessage("Your listing is saved. Choose a membership package to publish it.");
     }
-    catch (reason) { const details = (reason as { details?: { missing?: string[] } })?.details; setMissing(details?.missing || []); const message = formError(reason, "Could not publish your business."); setError(message); window.alert(message); }
+    catch (reason) { const details = (reason as { details?: { missing?: string[] } })?.details; setMissing(details?.missing || []); const message = formError(reason, "Could not save your business before checkout."); setError(message); window.alert(message); }
     finally { setSaving(false); }
+  };
+  const startMembershipPayment = async (billing: "monthly" | "yearly") => {
+    setPaymentBusy(true); setPaymentError("");
+    try {
+      await loadRazorpayCheckout();
+      const result = await paymentApi.checkout(billing === "monthly" ? "member_monthly" : "member_yearly") as any;
+      const checkout = result?.data ?? result;
+      const subscriptionId = checkout.subscriptionId as string | undefined;
+      const orderId = checkout.orderId as string | undefined;
+      if (!subscriptionId && !orderId) throw new Error("The payment service did not return a checkout session.");
+      const RazorpayCheckout = window.Razorpay;
+      if (!RazorpayCheckout) throw new Error("Razorpay checkout did not load. Please try again.");
+      const options: RazorpayOptions = {
+        key: checkout.keyId,
+        ...(subscriptionId ? { subscription_id: subscriptionId } : { order_id: orderId, amount: checkout.amount, currency: checkout.currency }),
+        name: "WS Hub",
+        description: billing === "monthly" ? "₹3,100 first payment, then ₹299 monthly autopay" : "₹5,200 for one year",
+        prefill: checkout.prefill,
+        theme: { color: "#0f2a5c" },
+        handler: async (response) => {
+          try {
+            await paymentApi.verify({
+              ...(subscriptionId ? { razorpay_subscription_id: response.razorpay_subscription_id || subscriptionId } : { razorpay_order_id: response.razorpay_order_id || orderId }),
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+            });
+            await businessApi.publish(id);
+            setMembershipDialogOpen(false);
+            setMessage("Payment confirmed. Your listing is now live.");
+            window.location.hash = "#/businesses/manage";
+          } catch (reason) {
+            setPaymentError(formError(reason, "Payment could not be verified. Your listing has not been published."));
+          } finally { setPaymentBusy(false); }
+        },
+        modal: { ondismiss: () => setPaymentBusy(false) },
+      };
+      new RazorpayCheckout(options).open();
+    } catch (reason) {
+      setPaymentError(formError(reason, "Could not start Razorpay checkout."));
+      setPaymentBusy(false);
+    }
   };
   const textField = (key: BusinessTextKey, label: string, options: { type?: string; max?: number; placeholder?: string; hint?: string } = {}) => <Field label={label} htmlFor={`business-${key}`} hint={options.hint}><input id={`business-${key}`} className={inputCls} type={options.type || "text"} maxLength={options.max} placeholder={options.placeholder} value={form[key]} onChange={(event) => update(key, event.target.value)} /></Field>;
 
@@ -449,6 +522,25 @@ export function EditBusinessPage() {
         {form.gallery.length === 0 ? <p className="rounded-lg border border-dashed border-slate-300 p-5 text-center text-[12px] text-slate-500">No gallery photos added yet.</p> : <div className="grid gap-4 sm:grid-cols-2">{form.gallery.map((image, index) => <article key={index} className="rounded-lg border border-line p-4"><div className="mb-3 aspect-[16/9] overflow-hidden rounded-lg bg-slate-100">{image.image ? <img src={image.image} alt={image.label || "Gallery preview"} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-[11px] text-slate-500">Upload a photo</div>}</div><div className="space-y-3"><label className="inline-flex cursor-pointer rounded-md border border-slate-300 px-3 py-2 text-[11.5px] font-semibold text-navy-800">{uploadingMedia === `gallery-${index}` ? "Uploading…" : image.image ? "Change photo" : "Upload photo"}<input className="sr-only" type="file" accept="image/png,image/jpeg,image/webp,image/gif" disabled={!!uploadingMedia} onChange={(event) => { void uploadPortfolioImage("gallery", index, event.currentTarget.files?.[0]); event.currentTarget.value = ""; }} /></label><Field label="Caption" htmlFor={`gallery-${index}-caption`}><input id={`gallery-${index}-caption`} className={inputCls} maxLength={200} value={image.label} onChange={(event) => setForm((old) => ({ ...old, gallery: old.gallery.map((item, i) => i === index ? { ...item, label: event.target.value } : item) }))} placeholder="Describe this photo" /></Field><Field label="Category" htmlFor={`gallery-${index}-category`}><select id={`gallery-${index}-category`} className="select" value={image.group} onChange={(event) => setForm((old) => ({ ...old, gallery: old.gallery.map((item, i) => i === index ? { ...item, group: event.target.value as GalleryForm["group"] } : item) }))}>{["Office", "Team", "Events", "Products", "Other"].map((group) => <option key={group}>{group}</option>)}</select></Field><button type="button" onClick={() => setForm((old) => ({ ...old, gallery: old.gallery.filter((_, i) => i !== index) }))} className="text-[11px] font-semibold text-red-600">Remove photo</button></div></article>)}</div>}
       </section>      <div className="flex flex-wrap items-center justify-between gap-3"><Link to="/businesses/manage" className="text-[12px] font-semibold text-slate-600 hover:text-navy-800">Cancel</Link><div className="flex flex-wrap gap-2"><button type="submit" disabled={saving || !!uploadingMedia} className="btn-gold px-5 py-2.5"><Save className="h-4 w-4" />{saving ? "Saving…" : "Save draft"}</button><button type="button" disabled={saving || !!uploadingMedia} onClick={() => void publish()} className="btn-navy px-5 py-2.5"><BadgeCheck className="h-4 w-4" />Publish listing</button></div></div>
     </form>}
+    <Modal open={membershipDialogOpen} onClose={() => { if (!paymentBusy) setMembershipDialogOpen(false); }} title="Choose a membership package" subtitle={`Select a plan to publish this ${form.listingType === "startup" ? "startup" : "business"} listing.`} size="md">
+      {paymentError && <div role="alert" className="mb-4 rounded-lg bg-red-50 px-3 py-2.5 text-[12px] text-red-700">{paymentError}</div>}
+      <div className="grid gap-3 sm:grid-cols-2">
+        <button type="button" disabled={paymentBusy} onClick={() => void startMembershipPayment("monthly")} className="rounded-xl border border-line p-4 text-left transition-colors hover:border-gold-500 hover:bg-gold-50 disabled:opacity-60">
+          <span className="block text-[12px] font-bold uppercase tracking-wide text-slate-500">Monthly autopay</span>
+          <span className="mt-2 block text-[27px] font-black text-navy-900">₹3,100</span>
+          <span className="mt-1 block text-[12px] font-semibold text-navy-700">Then ₹299/month</span>
+          <span className="mt-3 block text-[11px] leading-relaxed text-slate-500">₹3,100 is charged now. Razorpay sets up monthly automatic payments of ₹299.</span>
+        </button>
+        <button type="button" disabled={paymentBusy} onClick={() => void startMembershipPayment("yearly")} className="rounded-xl border border-line p-4 text-left transition-colors hover:border-gold-500 hover:bg-gold-50 disabled:opacity-60">
+          <span className="block text-[12px] font-bold uppercase tracking-wide text-slate-500">Yearly</span>
+          <span className="mt-2 block text-[27px] font-black text-navy-900">₹5,200</span>
+          <span className="mt-1 block text-[12px] font-semibold text-navy-700">One payment for one year</span>
+          <span className="mt-3 block text-[11px] leading-relaxed text-slate-500">Razorpay will automatically renew the ₹5,200 membership once each year.</span>
+        </button>
+      </div>
+      {paymentBusy && <p className="mt-4 text-center text-[12px] font-semibold text-navy-700">Connecting to Razorpay…</p>}
+      <p className="mt-4 text-[10.5px] leading-relaxed text-slate-500">Secure payment is handled by Razorpay. Your listing stays a draft until payment is verified.</p>
+    </Modal>
   </div>;
 }
 
