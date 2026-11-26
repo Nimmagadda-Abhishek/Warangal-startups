@@ -1,12 +1,24 @@
-import { useState, type MouseEvent } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { BadgeCheck, Bookmark, CalendarDays, MapPin, Phone, Share2, UserRound } from "lucide-react";
 import type { BusinessRecord } from "../businesses";
 import { Stars } from "./Stars";
 import { getState, toggleSaved, useStore } from "../store";
 import { cn } from "../utils/cn";
 import { businessApi } from "../api";
 
+const focusRing =
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy-700 focus-visible:ring-offset-2";
+
+/* Hand-drawn glyphs, same family as the rest of the site */
+function Glyph({ children, className, fill = "none", sw = 1.6 }: { children: ReactNode; className?: string; fill?: string; sw?: number }) {
+  return (
+    <svg viewBox="0 0 20 20" fill={fill} stroke="currentColor" strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true" focusable="false">
+      {children}
+    </svg>
+  );
+}
+
+/* Kept as an export in case other pages use it */
 export function WhatsAppIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden="true">
@@ -16,18 +28,37 @@ export function WhatsAppIcon({ className }: { className?: string }) {
 }
 
 export function LogoBadge({ b, size = "md" }: { b: BusinessRecord; size?: "sm" | "md" | "lg" | "xl" }) {
-  const dims = { sm: "h-10 w-10 text-xs", md: "h-14 w-14 text-sm", lg: "h-20 w-20 text-lg", xl: "h-24 w-24 text-xl sm:h-28 sm:w-28 sm:text-2xl" }[size];
+  const dims = {
+    sm: "h-10 w-10 text-[13px]",
+    md: "h-14 w-14 text-[15px]",
+    lg: "h-20 w-20 text-lg",
+    xl: "h-24 w-24 text-xl sm:h-28 sm:w-28 sm:text-2xl",
+  }[size];
   return (
     <span
-      className={cn("relative flex shrink-0 items-center justify-center overflow-hidden rounded-full font-black tracking-tight ring-4 ring-white shadow-md", dims)}
+      className={cn("relative flex shrink-0 items-center justify-center overflow-hidden rounded-full font-bold tracking-tight ring-4 ring-white", dims)}
       style={{ background: b.logo.bg, color: b.logo.fg }}
       aria-hidden="true"
     >
       <span>{b.logo.initials}</span>
-      {b.logoUrl && <img src={b.logoUrl} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover" onError={(event) => { event.currentTarget.hidden = true; }} />}
+      {b.logoUrl && (
+        <img
+          src={b.logoUrl}
+          alt=""
+          loading="lazy"
+          className="absolute inset-0 h-full w-full object-cover"
+          onError={(event) => {
+            event.currentTarget.hidden = true;
+          }}
+        />
+      )}
     </span>
   );
 }
+
+/* Chip used on top of photographs (save, share) */
+const overlayChip =
+  "relative flex h-10 w-10 items-center justify-center rounded-md border border-white/70 bg-white/95 text-navy-800 backdrop-blur transition-colors hover:bg-white motion-reduce:transition-none";
 
 export function SaveButton({ slug, className }: { slug: string; className?: string }) {
   const saved = useStore((s) => s.saved.business).includes(slug);
@@ -36,7 +67,7 @@ export function SaveButton({ slug, className }: { slug: string; className?: stri
     <button
       type="button"
       aria-pressed={saved}
-      aria-label={saved ? "Remove from saved" : "Save business"}
+      aria-label="Save business"
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -47,26 +78,71 @@ export function SaveButton({ slug, className }: { slug: string; className?: stri
         setTimeout(() => setPop(false), 450);
       }}
       className={cn(
-        "flex h-9 w-9 items-center justify-center rounded-lg border bg-white/95 text-navy-800 shadow-sm backdrop-blur transition-all duration-300 hover:bg-white hover:shadow-md",
-        saved ? "border-gold-500 text-gold-500" : "border-white/60",
-        pop && "animate-[bookmark-pop_0.45s_cubic-bezier(0.34,1.56,0.64,1)]",
+        overlayChip,
+        focusRing,
+        /* Saved = dark chip with a gold bookmark: readable without relying on hue alone */
+        saved && "border-navy-900 bg-navy-900 text-gold-400 hover:bg-navy-800",
+        pop && "animate-[bookmark-pop_0.45s_cubic-bezier(0.34,1.56,0.64,1)] motion-reduce:animate-none",
         className,
       )}
     >
-      <Bookmark className="h-4 w-4 transition-transform duration-300" fill={saved ? "currentColor" : "none"} strokeWidth={2.2} />
+      <Glyph className="h-[18px] w-[18px]" fill={saved ? "currentColor" : "none"} sw={1.7}>
+        <path d="M5.4 3.8h9.2v12.7L10 13.3l-4.6 3.2V3.8Z" />
+      </Glyph>
     </button>
+  );
+}
+
+/* Replaces the silent copy: confirms on screen and to screen readers */
+function ShareCardButton({ b }: { b: BusinessRecord }) {
+  const [copied, setCopied] = useState(false);
+  const timer = useRef<number | undefined>(undefined);
+  useEffect(() => () => window.clearTimeout(timer.current), []);
+
+  const copy = async (url: string) => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      window.clearTimeout(timer.current);
+      timer.current = window.setTimeout(() => setCopied(false), 2200);
+    } catch {
+      /* clipboard blocked */
+    }
+  };
+  const share = async (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const url = `${window.location.origin}${window.location.pathname}#/businesses/${encodeURIComponent(b.slug)}`;
+    try {
+      if (navigator.share) await navigator.share({ title: `${b.name} digital card`, text: `Explore ${b.name} on WS Hub`, url });
+      else await copy(url);
+    } catch (error) {
+      if ((error as DOMException)?.name !== "AbortError") await copy(url);
+    }
+  };
+
+  return (
+    <div className="relative">
+      <button type="button" onClick={share} aria-label={`Share ${b.name} digital card`} className={cn(overlayChip, focusRing)}>
+        <Glyph className="h-[18px] w-[18px]" sw={1.7}>
+          <path d="M10 12.2V3.6" />
+          <path d="m6.8 6.6 3.2-3.2 3.2 3.2" />
+          <path d="M4.6 11v4.1c0 .7.6 1.3 1.3 1.3h8.2c.7 0 1.3-.6 1.3-1.3V11" />
+        </Glyph>
+      </button>
+      <span role="status" className={copied ? "absolute right-0 top-full z-10 mt-2 whitespace-nowrap rounded bg-navy-900 px-2.5 py-1.5 text-[12px] font-medium text-white" : "sr-only"}>
+        {copied ? "Link copied" : ""}
+      </span>
+    </div>
   );
 }
 
 export function VerifiedPill({ className }: { className?: string }) {
   return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1 rounded-full bg-navy-800 px-2.5 py-1 text-[10px] font-semibold text-white shadow-sm",
-        className,
-      )}
-    >
-      <BadgeCheck className="h-3 w-3 text-gold-400" strokeWidth={2.4} />
+    <span className={cn("inline-flex items-center gap-1 rounded-full bg-navy-800 px-2.5 py-1 text-[12px] font-semibold leading-none text-white", className)}>
+      <Glyph className="h-3 w-3 text-gold-400" sw={2.2}>
+        <path d="m4.8 10.4 3.4 3.4 7-7.6" />
+      </Glyph>
       Verified
     </span>
   );
@@ -74,25 +150,87 @@ export function VerifiedPill({ className }: { className?: string }) {
 
 export function ActionButtons({ b, compact = false }: { b: BusinessRecord; compact?: boolean }) {
   const base = cn(
-    "inline-flex items-center justify-center gap-1.5 rounded-md font-semibold transition-all duration-300",
-    compact ? "px-3 py-2 text-[11.5px]" : "px-3.5 py-2.5 text-xs",
+    "inline-flex items-center justify-center rounded-md font-semibold transition-colors motion-reduce:transition-none",
+    focusRing,
+    compact ? "h-10 px-3.5 text-[13px]" : "h-11 px-4 text-[14px]",
   );
+  const secondary = "border border-slate-300 text-navy-800 hover:bg-navy-50";
+  const phone = b.contact?.phone?.replace(/\s/g, "");
+  const whatsapp = b.contact?.whatsapp?.replace(/\D/g, "");
+
   return (
     <div className="flex flex-wrap gap-2">
-      <a href={`tel:${b.contact.phone.replace(/\s/g, "")}`} className={cn(base, "flex-1 bg-navy-50 text-navy-800 hover:bg-navy-100")}>
-        <Phone className="h-3.5 w-3.5" strokeWidth={2.2} /> Call
-      </a>
-      <a
-        href={`https://wa.me/${b.contact.whatsapp.replace(/\D/g, "")}`}
-        target="_blank"
-        rel="noreferrer"
-        className={cn(base, "flex-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100")}
-      >
-        <WhatsAppIcon className="h-3.5 w-3.5" /> WhatsApp
-      </a>
-      <Link to={`/businesses/${b.slug}`} className={cn(base, "flex-1 bg-navy-800 text-white hover:bg-navy-700 hover:shadow-[0_8px_18px_-8px_rgba(15,42,92,0.7)]")}>
-        View Profile
+      <Link to={`/businesses/${b.slug}`} className={cn(base, "min-w-[110px] flex-1 bg-navy-800 text-white hover:bg-navy-700")}>
+        View profile
       </Link>
+      {phone && (
+        <a href={`tel:${phone}`} className={cn(base, secondary)}>
+          Call
+        </a>
+      )}
+      {whatsapp && (
+        <a href={`https://wa.me/${whatsapp}`} target="_blank" rel="noopener noreferrer" className={cn(base, secondary)}>
+          WhatsApp
+          <span className="sr-only"> (opens in a new tab)</span>
+        </a>
+      )}
+    </div>
+  );
+}
+
+/* ---------- shared bits for both card layouts ---------- */
+
+function FounderLine({ b }: { b: BusinessRecord }) {
+  if (!b.founder) return null;
+  return (
+    <p className="mt-2 truncate text-[13px] text-slate-600">
+      Founder{" "}
+      {b.founderId ? (
+        <Link to={`/members/${encodeURIComponent(b.founderId)}`} className={cn("rounded-sm font-semibold text-navy-700 hover:underline", focusRing)}>
+          {b.founder}
+        </Link>
+      ) : (
+        <span className="font-semibold text-navy-700">{b.founder}</span>
+      )}
+    </p>
+  );
+}
+
+function Tags({ tags }: { tags?: string[] }) {
+  const list = tags || [];
+  if (!list.length) return null;
+  const shown = list.slice(0, 4);
+  const extra = list.length - shown.length;
+  return (
+    <ul className="mt-3 flex flex-wrap gap-1.5" aria-label="Tags">
+      {shown.map((t) => (
+        <li key={t} className="rounded-md bg-slate-100 px-2.5 py-1 text-[12px] font-medium text-slate-700">
+          {t}
+        </li>
+      ))}
+      {extra > 0 && <li className="px-1 py-1 text-[12px] font-medium text-slate-600">+{extra} more</li>}
+    </ul>
+  );
+}
+
+function categoryLine(b: BusinessRecord) {
+  return [b.category, b.industry].filter((v, i, a) => v && a.indexOf(v) === i).join(", ");
+}
+
+function Cover({ b, className }: { b: BusinessRecord; className: string }) {
+  /* Image link is a pointer convenience; the title link is the tab stop */
+  return (
+    <Link to={`/businesses/${b.slug}`} tabIndex={-1} aria-hidden="true" className={cn("block overflow-hidden bg-navy-50", className)}>
+      {b.cover && <img src={b.cover} alt="" loading="lazy" className="h-full w-full object-cover" />}
+    </Link>
+  );
+}
+
+function CardActions({ b }: { b: BusinessRecord }) {
+  return (
+    <div className="absolute right-3 top-3 flex gap-2">
+      <ShareCardButton b={b} />
+      <SaveButton slug={b.slug} />
     </div>
   );
 }
@@ -103,92 +241,82 @@ interface Props {
 }
 
 export function BusinessCard({ b, view = "grid" }: Props) {
-  const shareCard = async (event: MouseEvent<HTMLButtonElement>) => {
-    event.preventDefault();
-    const url = `${window.location.origin}${window.location.pathname}#/businesses/${encodeURIComponent(b.slug)}`;
-    try {
-      if (navigator.share) await navigator.share({ title: `${b.name} digital card`, text: `Explore ${b.name} on WS Hub`, url });
-      else await navigator.clipboard.writeText(url);
-    } catch (error) {
-      if ((error as DOMException)?.name !== "AbortError") await navigator.clipboard?.writeText(url).catch(() => undefined);
-    }
-  };
+  const place = [b.location, b.established ? `since ${b.established}` : ""].filter(Boolean).join(", ");
+
   if (view === "list") {
     return (
-      <article className="card group grid overflow-hidden sm:grid-cols-[240px_1fr]">
+      <article className="card grid overflow-hidden sm:grid-cols-[240px_1fr]">
         <div className="relative">
-          <Link to={`/businesses/${b.slug}`} className="block aspect-[16/10] overflow-hidden sm:aspect-auto sm:h-full">
-            <img src={b.cover} alt="" loading="lazy" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
-          </Link>
-          <SaveButton slug={b.slug} className="absolute right-2.5 top-2.5" />
+          <Cover b={b} className="aspect-[16/10] sm:aspect-auto sm:h-full" />
+          <CardActions b={b} />
         </div>
-        <div className="flex flex-col p-4">
+        <div className="flex flex-col p-5">
           <div className="flex items-start gap-3">
             <LogoBadge b={b} size="sm" />
             <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <h3 className="text-[15px] font-bold text-navy-900">
-                  <Link to={`/businesses/${b.slug}`} className="hover:text-navy-600">{b.name}</Link>
+              <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+                <h3 className="text-[17px] font-semibold leading-snug text-navy-900">
+                  <Link to={`/businesses/${b.slug}`} className={cn("rounded-sm hover:underline hover:decoration-gold-500 hover:underline-offset-4", focusRing)}>
+                    {b.name}
+                  </Link>
                 </h3>
                 {b.verified && <VerifiedPill />}
               </div>
-              <p className="mt-0.5 text-[11.5px] text-slate-500">{b.category} · {b.industry}</p>
+              <p className="mt-0.5 text-[13px] font-medium text-slate-700">{categoryLine(b)}</p>
             </div>
-            <div className="hidden sm:block"><Stars rating={b.rating} reviews={b.reviews} /></div>
+            <div className="hidden shrink-0 sm:block">
+              <Stars rating={b.rating} reviews={b.reviews} />
+            </div>
           </div>
-          {b.founder && <p className="mt-2 inline-flex items-center gap-1.5 text-[11.5px] font-medium text-navy-700"><UserRound className="h-3.5 w-3.5" /> Founder: {b.founderId ? <Link to={`/members/${encodeURIComponent(b.founderId)}`} className="hover:underline">{b.founder}</Link> : b.founder}</p>}
-          <p className="mt-2 text-[12.5px] leading-relaxed text-slate-600">{b.description}</p>
-          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-500">
-            <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" /> {b.location}</span>
-            <span className="inline-flex items-center gap-1"><CalendarDays className="h-3 w-3" /> Est. {b.established}</span>
-            <span className="sm:hidden"><Stars rating={b.rating} reviews={b.reviews} /></span>
+
+          <FounderLine b={b} />
+          <p className="mt-2.5 text-[14px] leading-relaxed text-slate-600">{b.description}</p>
+          <p className="mt-2.5 text-[13px] text-slate-600">{place}</p>
+          <div className="mt-2 sm:hidden">
+            <Stars rating={b.rating} reviews={b.reviews} />
           </div>
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {b.tags.map((t) => (
-              <span key={t} className="rounded-md bg-slate-100 px-2 py-1 text-[10.5px] font-medium text-slate-600">{t}</span>
-            ))}
+          <Tags tags={b.tags} />
+
+          <div className="mt-auto pt-5">
+            <ActionButtons b={b} compact />
           </div>
-          <div className="mt-auto flex items-center gap-2 pt-4"><div className="min-w-0 flex-1"><ActionButtons b={b} compact /></div><button type="button" onClick={shareCard} aria-label={`Share ${b.name} digital card`} className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-slate-300 px-3 py-2 text-[11px] font-semibold text-navy-800 hover:bg-navy-50"><Share2 className="h-3.5 w-3.5" /><span className="hidden sm:inline">Share card</span></button></div>
         </div>
       </article>
     );
   }
 
   return (
-    <article className="card group flex flex-col overflow-hidden">
+    <article className="card flex flex-col overflow-hidden">
       <div className="relative">
-        <Link to={`/businesses/${b.slug}`} className="block aspect-[16/8] overflow-hidden">
-          <img src={b.cover} alt="" loading="lazy" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
-          <div className="absolute inset-0 bg-gradient-to-t from-navy-950/30 to-transparent" />
-        </Link>
-        <SaveButton slug={b.slug} className="absolute right-2.5 top-2.5" />
+        <Cover b={b} className="aspect-[16/9]" />
+        {b.verified && <VerifiedPill className="absolute bottom-3 left-3" />}
+        <CardActions b={b} />
       </div>
-      <div className="relative px-3 pb-3">
-        <div className="-mt-7 flex items-end gap-2.5">
-          <LogoBadge b={b} />
-          <div className="mb-0.5 flex min-w-0 flex-1 items-center justify-between gap-2">
-            {b.verified ? <VerifiedPill /> : <span />}
-            <span className="rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-medium text-slate-500 shadow-sm">Est. {b.established}</span>
-          </div>
-        </div>
-        <div className="mt-2 flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h3 className="truncate text-[14.5px] font-bold text-navy-900">
-              <Link to={`/businesses/${b.slug}`} className="transition-colors hover:text-navy-600">{b.name}</Link>
+
+      <div className="flex flex-1 flex-col p-4">
+        <div className="flex items-start gap-3">
+          <LogoBadge b={b} size="sm" />
+          <div className="min-w-0 flex-1">
+            <h3 className="text-[16px] font-semibold leading-snug text-navy-900">
+              <Link to={`/businesses/${b.slug}`} className={cn("rounded-sm hover:underline hover:decoration-gold-500 hover:underline-offset-4", focusRing)}>
+                {b.name}
+              </Link>
             </h3>
-            <p className="text-[11px] text-slate-500">{b.industry}</p>
-            {b.founder && <p className="mt-0.5 truncate text-[10.5px] font-medium text-navy-700">Founder: {b.founderId ? <Link to={`/members/${encodeURIComponent(b.founderId)}`} className="hover:underline">{b.founder}</Link> : b.founder}</p>}
-            <p className="mt-1 inline-flex items-center gap-1 text-[11px] text-slate-500"><MapPin className="h-3 w-3" strokeWidth={2} /> {b.location}</p>
+            <p className="mt-0.5 text-[13px] font-medium text-slate-700">{categoryLine(b)}</p>
           </div>
-          <div className="shrink-0 pt-0.5"><Stars rating={b.rating} reviews={b.reviews} /></div>
         </div>
-        <p className="mt-2.5 line-clamp-2 text-[12.5px] leading-relaxed text-slate-600">{b.description}</p>
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          {b.tags.map((t) => (
-            <span key={t} className="rounded-md bg-slate-100 px-2 py-1 text-[10.5px] font-medium text-slate-600 transition-colors group-hover:bg-navy-50 group-hover:text-navy-800">{t}</span>
-          ))}
+
+        <div className="mt-2.5">
+          <Stars rating={b.rating} reviews={b.reviews} />
         </div>
-        <div className="mt-3.5 flex items-center gap-2"><div className="min-w-0 flex-1"><ActionButtons b={b} compact /></div><button type="button" onClick={shareCard} aria-label={`Share ${b.name} digital card`} className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md border border-slate-300 px-2.5 text-[11px] font-semibold text-navy-800 hover:bg-navy-50"><Share2 className="h-3.5 w-3.5" /><span className="hidden lg:inline">Share</span></button></div>
+        <p className="mt-2 text-[13px] text-slate-600">{place}</p>
+        <FounderLine b={b} />
+        <p className="mt-2.5 line-clamp-2 text-[14px] leading-relaxed text-slate-600">{b.description}</p>
+        <Tags tags={b.tags} />
+
+        <div className="mt-auto pt-4">
+          <ActionButtons b={b} compact />
+        </div>
       </div>
     </article>
   );

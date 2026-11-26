@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type ButtonHTMLAttributes, type FormEvent, type ReactNode } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft,
@@ -8,18 +8,20 @@ import {
   LayoutGrid,
   List,
   MapPin,
+  RotateCcw,
   Search,
   SlidersHorizontal,
   Star,
   X,
 } from "lucide-react";
 import { filterListingCategories, industries, locations, popularSearches, type BusinessRecord } from "../businesses";
-import { EmptyDataCard } from "../components/EmptyDataCard";
 import { BusinessCard } from "../components/BusinessCard";
 import { Reveal } from "../components/Reveal";
 import { cn } from "../utils/cn";
 import { businessApi, homeApi } from "../api";
 import { BusinessCardShimmer } from "../components/ui/Shimmer";
+
+/* ───────────────────────── Constants & tokens ───────────────────────── */
 
 const PAGE_SIZE = 6;
 const types = ["Startup", "SME", "Large Enterprise"] as const;
@@ -34,6 +36,15 @@ const sorts: { value: string; label: string }[] = [
 ];
 
 const allTags: string[] = [];
+
+const FOCUS =
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white";
+const FOCUS_DARK =
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2 focus-visible:ring-offset-navy-900";
+const EASE = "transition-all duration-200 ease-out motion-reduce:transition-none";
+const reduceMotion = () => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/* ───────────────────────── Filtering logic (unchanged) ───────────────────────── */
 
 interface Filters {
   q: string;
@@ -102,16 +113,19 @@ function sortList(list: BusinessRecord[], sort: string) {
   }
 }
 
-/* ---------- Filter panel ---------- */
+/* ───────────────────────── Filter panel ───────────────────────── */
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div>
-      <p className="mb-2 text-[12.5px] font-bold text-navy-900">{label}</p>
-      {children}
-    </div>
+    <fieldset className="border-t border-line py-4">
+      <legend className="float-left mb-3 w-full text-[12px] font-semibold uppercase tracking-[0.08em] text-slate-500">{label}</legend>
+      <div className="clear-both">{children}</div>
+    </fieldset>
   );
 }
+
+const checkRow =
+  "-mx-1 flex min-h-[40px] cursor-pointer items-center gap-3 rounded-md px-2 text-[14px] text-slate-700 hover:bg-navy-50";
 
 function FilterPanel({
   f,
@@ -127,25 +141,35 @@ function FilterPanel({
   categories: { id: string; name: string; slug: string }[];
 }) {
   return (
-    <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <h2 className="text-[17px] font-bold text-navy-900">
-          Filters{activeCount > 0 && <span className="ml-2 rounded-full bg-gold-100 px-2 py-0.5 text-[10.5px] font-semibold text-gold-800">{activeCount}</span>}
+    <div>
+      <div className="flex items-center justify-between pb-4">
+        <h2 className="flex items-center gap-2 text-[15px] font-semibold tracking-tight text-navy-900">
+          Refine
+          {activeCount > 0 && (
+            <span className="rounded-full bg-navy-900 px-2 py-0.5 text-[12px] font-semibold leading-none text-white" aria-label={`${activeCount} active filters`}>
+              {activeCount}
+            </span>
+          )}
         </h2>
-        <button type="button" onClick={clear} className="text-[12px] font-medium text-navy-600 transition-colors hover:text-navy-800">
-          Clear All
+        <button
+          type="button"
+          onClick={clear}
+          disabled={activeCount === 0}
+          className={cn("inline-flex items-center gap-1 rounded px-1 py-1 text-[13px] font-medium text-navy-700 hover:text-navy-900 disabled:cursor-not-allowed disabled:opacity-40", FOCUS)}
+        >
+          <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" /> Reset
         </button>
       </div>
 
       <Field label="Category">
-        <select className="select" value={f.category} onChange={(e) => set({ category: e.target.value })} aria-label="Category">
+        <select className="select w-full text-[14px]" value={f.category} onChange={(e) => set({ category: e.target.value })} aria-label="Category">
           <option value="">All Categories</option>
           {categories.map((category) => <option key={category.id} value={category.slug}>{category.name}</option>)}
         </select>
       </Field>
 
       <Field label="Industry">
-        <select className="select" value={f.industry} onChange={(e) => set({ industry: e.target.value })} aria-label="Industry">
+        <select className="select w-full text-[14px]" value={f.industry} onChange={(e) => set({ industry: e.target.value })} aria-label="Industry">
           <option value="">All Industries</option>
           {industries.map((c) => <option key={c}>{c}</option>)}
         </select>
@@ -153,23 +177,18 @@ function FilterPanel({
 
       <Field label="Location">
         <div className="relative">
-          <MapPin className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-          <select className="select pl-8" value={f.location} onChange={(e) => set({ location: e.target.value })} aria-label="Location">
+          <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" aria-hidden="true" />
+          <select className="select w-full pl-9 text-[14px]" value={f.location} onChange={(e) => set({ location: e.target.value })} aria-label="Location">
             <option value="">All Locations</option>
             {locations.map((c) => <option key={c}>{c}</option>)}
           </select>
-          {f.location && (
-            <button type="button" aria-label="Clear location" onClick={() => set({ location: "" })} className="absolute right-8 top-1/2 -translate-y-1/2 rounded p-0.5 text-slate-400 hover:text-navy-800">
-              <X className="h-3.5 w-3.5" />
-            </button>
-          )}
         </div>
       </Field>
 
       <Field label="Business Type">
-        <div className="space-y-2">
+        <div className="space-y-0.5">
           {types.map((t) => (
-            <label key={t} className="flex cursor-pointer items-center gap-2.5 text-[12.5px] text-slate-700">
+            <label key={t} className={checkRow}>
               <input
                 type="checkbox"
                 className="checkbox"
@@ -183,26 +202,28 @@ function FilterPanel({
       </Field>
 
       <Field label="Verification">
-        <label className="flex cursor-pointer items-center gap-2.5 text-[12.5px] text-slate-700">
+        <label className={checkRow}>
           <input type="checkbox" className="checkbox" checked={f.verified} onChange={(e) => set({ verified: e.target.checked })} />
-          Verified Only
+          Verified only
         </label>
       </Field>
 
       <Field label="Rating">
-        <div className="space-y-1.5">
+        <div className="space-y-1">
           {[4, 3, 0].map((r) => (
             <button
               key={r}
               type="button"
               onClick={() => set({ rating: r })}
-              className={cn(
-                "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12px] transition-colors",
-                f.rating === r ? "bg-navy-50 text-navy-900" : "text-slate-600 hover:bg-slate-50",
-              )}
               aria-pressed={f.rating === r}
+              className={cn(
+                "flex min-h-[40px] w-full items-center gap-2.5 rounded-md px-2 text-left text-[14px]",
+                EASE,
+                FOCUS,
+                f.rating === r ? "bg-navy-50 font-semibold text-navy-900 ring-1 ring-navy-100" : "text-slate-700 hover:bg-slate-50",
+              )}
             >
-              <span className="flex gap-0.5">
+              <span className="flex gap-0.5" aria-hidden="true">
                 {Array.from({ length: 5 }).map((_, i) => (
                   <Star key={i} className={cn("h-3.5 w-3.5", i < (r || 5) ? "text-gold-500" : "text-slate-300")} fill="currentColor" strokeWidth={0} />
                 ))}
@@ -214,20 +235,22 @@ function FilterPanel({
       </Field>
 
       <Field label="Year Established">
-        <select className="select" value={f.year} onChange={(e) => set({ year: e.target.value })} aria-label="Year established">
+        <select className="select w-full text-[14px]" value={f.year} onChange={(e) => set({ year: e.target.value })} aria-label="Year established">
           {years.map((y) => <option key={y}>{y}</option>)}
         </select>
       </Field>
 
-      <Field label="Products / Services">
-        <select className="select" value={f.ps} onChange={(e) => set({ ps: e.target.value })} aria-label="Products or services">
-          <option value="">Select</option>
-          {allTags.map((t) => <option key={t}>{t}</option>)}
-        </select>
-      </Field>
+      {allTags.length > 0 && (
+        <Field label="Products / Services">
+          <select className="select w-full text-[14px]" value={f.ps} onChange={(e) => set({ ps: e.target.value })} aria-label="Products or services">
+            <option value="">Select</option>
+            {allTags.map((t) => <option key={t}>{t}</option>)}
+          </select>
+        </Field>
+      )}
 
       <Field label="Membership">
-        <select className="select" value={f.membership} onChange={(e) => set({ membership: e.target.value })} aria-label="Membership">
+        <select className="select w-full text-[14px]" value={f.membership} onChange={(e) => set({ membership: e.target.value })} aria-label="Membership">
           {memberships.map((m) => <option key={m}>{m}</option>)}
         </select>
       </Field>
@@ -235,16 +258,18 @@ function FilterPanel({
   );
 }
 
-/* ---------- Page ---------- */
+/* ───────────────────────── Page ───────────────────────── */
 
 export default function BusinessDirectory() {
   const [params, setParams] = useSearchParams();
   const [drawer, setDrawer] = useState(false);
-  const [focus, setFocus] = useState(false);
   const [apiTotal, setApiTotal] = useState<number | null>(null);
   const [apiBusinesses, setApiBusinesses] = useState<BusinessRecord[] | null>(null);
   const [businessesLoading, setBusinessesLoading] = useState(true);
   const [categoryOptions, setCategoryOptions] = useState<{ id: string; name: string; slug: string }[]>([]);
+  const searchRef = useRef<HTMLInputElement>(null);
+  const drawerCloseRef = useRef<HTMLButtonElement>(null);
+  const drawerTriggerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     let active = true;
@@ -383,237 +408,323 @@ export default function BusinessDirectory() {
     return () => { active = false; };
   }, [params]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Drawer: lock scroll, move focus in, close on Escape, restore focus.
   useEffect(() => {
     document.body.style.overflow = drawer ? "hidden" : "";
+    if (drawer) drawerCloseRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && drawer) {
+        setDrawer(false);
+        drawerTriggerRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", onKey);
     return () => {
       document.body.style.overflow = "";
+      window.removeEventListener("keydown", onKey);
     };
   }, [drawer]);
 
+  // "/" focuses search.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (e.key !== "/" || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable)) return;
+      e.preventDefault();
+      searchRef.current?.focus();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   const goPage = (p: number) => {
     update({ page: p > 1 ? String(p) : undefined }, false);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    window.scrollTo({ top: 0, behavior: reduceMotion() ? "auto" : "smooth" });
   };
+  const closeDrawer = () => {
+    setDrawer(false);
+    drawerTriggerRef.current?.focus();
+  };
+
+  const shownTotal = apiTotal ?? results.length;
+
+  const chips: { id: string; label: string; onRemove: () => void }[] = [];
+  if (f.q) chips.push({ id: "q", label: `“${f.q}”`, onRemove: () => { setQuery(""); set({ q: "" }); } });
+  if (f.category) chips.push({ id: "category", label: categoryOptions.find((c) => c.slug === f.category)?.name ?? f.category, onRemove: () => set({ category: "" }) });
+  if (f.industry) chips.push({ id: "industry", label: f.industry, onRemove: () => set({ industry: "" }) });
+  if (f.location) chips.push({ id: "location", label: f.location, onRemove: () => set({ location: "" }) });
+  f.type.forEach((t) => chips.push({ id: `type:${t}`, label: t, onRemove: () => set({ type: f.type.filter((x) => x !== t) }) }));
+  if (f.verified) chips.push({ id: "verified", label: "Verified", onRemove: () => set({ verified: false }) });
+  if (f.rating > 0) chips.push({ id: "rating", label: `${f.rating}+ stars`, onRemove: () => set({ rating: 0 }) });
+  if (f.year !== "Any Year") chips.push({ id: "year", label: f.year, onRemove: () => set({ year: "Any Year" }) });
+  if (f.ps) chips.push({ id: "ps", label: f.ps, onRemove: () => set({ ps: "" }) });
+  if (f.membership !== "Any") chips.push({ id: "membership", label: f.membership, onRemove: () => set({ membership: "Any" }) });
 
   return (
     <div className="page-in pb-20 lg:pb-0">
-      {/* Hero */}
-      <section className="relative overflow-hidden bg-navy-900 text-white">
-        <div className="absolute inset-0">
-          <div className="absolute inset-y-0 right-0 w-full md:w-[55%]">
-            <img src="/images/hero.jpg" alt="" className="h-full w-full object-cover object-[center_40%]" />
+      {/* ═════════ Hero ═════════ */}
+      <section className="relative overflow-hidden border-b-2 border-gold-500 bg-navy-900 text-white">
+        <div className="absolute inset-0" aria-hidden="true">
+          <div className="absolute inset-y-0 right-0 hidden w-[52%] md:block">
+            <img src="/images/hero.jpg" alt="" className="h-full w-full object-cover object-[center_40%] opacity-80" />
           </div>
-          <div className="absolute inset-0 bg-gradient-to-r from-navy-900 via-navy-900/95 to-navy-900/20 md:via-45%" />
-          <div className="absolute inset-0 bg-gradient-to-t from-navy-900/60 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-r from-navy-900 via-navy-900 to-navy-900/40 md:via-[50%]" />
+          <div className="absolute inset-0 bg-gradient-to-t from-navy-950/60 via-transparent to-transparent" />
         </div>
-        <div className="relative mx-auto max-w-[1280px] px-4 pb-8 pt-7 sm:px-6 lg:px-8 lg:pb-9 lg:pt-8">
-          <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-[12px] text-white/80">
-            <Link to="/" className="transition-colors hover:text-white">Home</Link>
-            <ChevronRight className="h-3 w-3" />
-            <span className="font-semibold text-white">Businesses</span>
+        <div className="relative mx-auto max-w-[1280px] px-4 pb-10 pt-6 sm:px-6 lg:px-8 lg:pb-12 lg:pt-7">
+          <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-[13px] text-white/75">
+            <Link to="/" className={cn("rounded hover:text-white", FOCUS_DARK)}>Home</Link>
+            <ChevronRight className="h-3.5 w-3.5 text-white/50" aria-hidden="true" />
+            <span aria-current="page" className="font-medium text-white">Businesses</span>
           </nav>
-          <div className="mt-4 grid items-end gap-6 lg:grid-cols-[1fr_auto]">
+
+          <div className="mt-7 grid items-end gap-8 lg:grid-cols-[1fr_auto]">
             <div>
-              <h1 className="text-[40px] font-black leading-none tracking-tight sm:text-[52px]">
+              <h1 className="text-[34px] font-bold leading-[1.08] tracking-tight sm:text-[46px]">
                 Explore <span className="text-gold-500">Businesses</span>
               </h1>
-              <p className="mt-3 text-[15px] text-white/90 sm:text-base">Discover verified businesses across Warangal. Connect, collaborate and grow together.</p>
+              <p className="mt-3 max-w-[580px] text-[16px] leading-relaxed text-white/85">
+                Discover verified businesses across Warangal. Connect, collaborate and grow together.
+              </p>
+              {!businessesLoading && (
+                <p className="mt-5 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-3.5 py-1.5 text-[13px] text-white/90 backdrop-blur-sm">
+                  <span className="h-1.5 w-1.5 rounded-full bg-gold-500" aria-hidden="true" />
+                  <span className="font-semibold text-white">{shownTotal.toLocaleString("en-IN")}</span> businesses listed
+                </p>
+              )}
             </div>
-            <div className="hidden lg:block">
-              <p className="text-[17px] font-bold leading-snug text-white">Local Businesses<br />Stronger Warangal</p>
-              <span className="mt-2 block h-[2px] w-20 bg-gold-500" />
-            </div>
+            <figure className="hidden max-w-[300px] border-l-2 border-gold-500 pl-4 lg:block">
+              <blockquote className="text-[16px] font-medium italic leading-snug text-white/95">“Local Businesses. Stronger Warangal.”</blockquote>
+            </figure>
           </div>
 
           <form
             role="search"
             onSubmit={submit}
-            className={cn(
-              "mt-6 flex max-w-[800px] overflow-hidden rounded-lg bg-white shadow-[0_14px_36px_-14px_rgba(0,0,0,0.6)] transition-all duration-500",
-              focus && "max-w-[860px] ring-2 ring-gold-400/80",
-            )}
+            className="mt-8 flex max-w-[820px] overflow-hidden rounded-xl bg-white shadow-[0_18px_40px_-16px_rgba(0,0,0,0.65)] ring-1 ring-white/10 transition-shadow duration-200 focus-within:ring-2 focus-within:ring-gold-400"
           >
             <label htmlFor="dir-search" className="sr-only">Search businesses</label>
-            <span className="flex items-center pl-4 pr-3 text-navy-800"><Search className="h-[18px] w-[18px]" strokeWidth={2.2} /></span>
+            <span className="flex items-center pl-5 pr-3 text-navy-700" aria-hidden="true"><Search className="h-5 w-5" strokeWidth={2.2} /></span>
             <input
+              ref={searchRef}
               id="dir-search"
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              onFocus={() => setFocus(true)}
-              onBlur={() => setFocus(false)}
-              placeholder="Search businesses by name, category, products or services..."
-              className="h-12 min-w-0 flex-1 bg-transparent text-[13.5px] text-ink placeholder:text-slate-400 focus:outline-none"
+              placeholder="Search by name, category, products or services…"
+              autoComplete="off"
+              enterKeyHint="search"
+              className="h-14 min-w-0 flex-1 bg-transparent text-[15px] text-ink placeholder:text-slate-500 focus:outline-none [&::-webkit-search-cancel-button]:hidden"
             />
-            {query && (
-              <button type="button" aria-label="Clear search" onClick={() => { setQuery(""); set({ q: "" }); }} className="px-2 text-slate-400 hover:text-navy-800">
+            {query ? (
+              <button
+                type="button"
+                aria-label="Clear search"
+                onClick={() => { setQuery(""); set({ q: "" }); searchRef.current?.focus(); }}
+                className={cn("flex w-11 items-center justify-center text-slate-500 hover:text-navy-900", FOCUS)}
+              >
                 <X className="h-4 w-4" />
               </button>
+            ) : (
+              <kbd className="mr-3 hidden items-center self-center rounded border border-slate-300 bg-slate-50 px-2 py-0.5 font-sans text-[12px] font-medium text-slate-500 sm:inline-flex" aria-hidden="true">/</kbd>
             )}
-            <button type="submit" className="shrink-0 bg-gold-500 px-5 text-[13.5px] font-semibold text-navy-900 transition-colors hover:bg-gold-400 sm:px-8">Search</button>
+            <button type="submit" className={cn("shrink-0 bg-gold-500 px-6 text-[14px] font-semibold text-navy-900 hover:bg-gold-400 sm:px-9", EASE, FOCUS)}>
+              Search
+            </button>
           </form>
         </div>
       </section>
 
-      {/* Popular searches */}
+      {/* ═════════ Popular searches ═════════ */}
       <div className="border-b border-line bg-white">
-        <div className="mx-auto flex max-w-[1280px] items-center gap-3 overflow-x-auto px-4 py-3 hide-scrollbar sm:px-6 lg:px-8">
-          <span className="shrink-0 text-[12.5px] font-semibold text-navy-900">Popular searches:</span>
-          {popularSearches.map((p) => (
-            <button
-              key={p}
-              type="button"
-              onClick={() => { setQuery(p); set({ q: p }); }}
-              className={cn(
-                "shrink-0 rounded-full border px-3.5 py-1.5 text-[11.5px] font-medium transition-all duration-300 hover:-translate-y-0.5 hover:border-navy-700 hover:text-navy-900",
-                f.q === p ? "border-navy-800 bg-navy-800 text-white" : "border-slate-200 bg-slate-50 text-slate-600",
-              )}
-            >
-              {p}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Category chips (mobile/tablet horizontal filters) */}
-      <div className="mx-auto max-w-[1280px] px-4 pt-4 sm:px-6 lg:hidden">
-        <div className="flex gap-2 overflow-x-auto pb-1 hide-scrollbar">
-          <button type="button" onClick={() => setDrawer(true)} className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-navy-800 bg-navy-800 px-3.5 py-1.5 text-[11.5px] font-semibold text-white">
-            <SlidersHorizontal className="h-3.5 w-3.5" /> Filters{activeCount > 0 && ` (${activeCount})`}
+        <div className="mx-auto flex max-w-[1280px] flex-wrap items-center gap-x-2 gap-y-2 px-4 py-3.5 sm:px-6 lg:px-8">
+          <button
+            ref={drawerTriggerRef}
+            type="button"
+            onClick={() => setDrawer(true)}
+            aria-haspopup="dialog"
+            className={cn("inline-flex min-h-[40px] items-center gap-2 rounded-full bg-navy-900 px-4 text-[13px] font-semibold text-white hover:bg-navy-800 lg:hidden", EASE, FOCUS)}
+          >
+            <SlidersHorizontal className="h-4 w-4" aria-hidden="true" /> Filters{activeCount > 0 && ` (${activeCount})`}
           </button>
-          <button type="button" onClick={() => set({ category: "" })} className={cn("shrink-0 rounded-full border px-3.5 py-1.5 text-[11.5px] font-medium", !f.category ? "border-gold-500 bg-gold-100 text-gold-800" : "border-slate-200 bg-white text-slate-600")}>All</button>
-          {categoryOptions.map((category) => (
-            <button key={category.id} type="button" onClick={() => set({ category: category.slug })} className={cn("shrink-0 rounded-full border px-3.5 py-1.5 text-[11.5px] font-medium", f.category === category.slug ? "border-gold-500 bg-gold-100 text-gold-800" : "border-slate-200 bg-white text-slate-600")}>{category.name}</button>
+          <span className="mr-1 text-[12px] font-semibold uppercase tracking-[0.08em] text-slate-500">Popular</span>
+          {popularSearches.map((p) => (
+            <ChipBtn key={p} active={f.q === p} onClick={() => { setQuery(p); set({ q: f.q === p ? "" : p }); }}>
+              {p}
+            </ChipBtn>
           ))}
         </div>
       </div>
 
-      {/* Main */}
-      <div className="mx-auto max-w-[1280px] px-4 pt-5 sm:px-6 lg:px-8 lg:pt-7">
-        <div className="grid gap-6 lg:grid-cols-[260px_1fr]">
-          <aside className="hidden lg:block">
+      {/* Category chips (mobile / tablet) */}
+      {categoryOptions.length > 0 && (
+        <div className="mx-auto max-w-[1280px] px-4 pt-4 sm:px-6 lg:hidden">
+          <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-2 hide-scrollbar" role="group" aria-label="Categories">
+            <ChipBtn active={!f.category} onClick={() => set({ category: "" })}>All</ChipBtn>
+            {categoryOptions.map((category) => (
+              <ChipBtn key={category.id} active={f.category === category.slug} onClick={() => set({ category: category.slug })}>
+                {category.name}
+              </ChipBtn>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ═════════ Main ═════════ */}
+      <div className="mx-auto max-w-[1280px] px-4 pt-6 sm:px-6 lg:px-8 lg:pt-8">
+        <div className="grid gap-8 lg:grid-cols-[264px_1fr]">
+          <aside className="hidden lg:block" aria-label="Filters">
             <div className="sticky top-[76px] max-h-[calc(100vh-92px)] overflow-y-auto rounded-xl border border-line bg-white p-5 shadow-[var(--shadow-card)] hide-scrollbar">
               <FilterPanel f={f} set={set} clear={clear} activeCount={activeCount} categories={categoryOptions} />
             </div>
           </aside>
 
-          <section aria-label="Results">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <section aria-label="Results" aria-busy={businessesLoading}>
+            <div className="flex flex-col gap-4 border-b border-line pb-4 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <h2 className="text-[20px] font-bold text-navy-900">
-                  {(apiTotal ?? results.length).toLocaleString("en-IN")} {(apiTotal ?? results.length) === 1 ? "Business" : "Businesses"}
+                <h2 className="text-[22px] font-bold tracking-tight text-navy-900" aria-live="polite">
+                  {businessesLoading ? (
+                    <span className="inline-block h-7 w-40 animate-pulse rounded bg-slate-200 align-middle motion-reduce:animate-none" />
+                  ) : (
+                    <>
+                      {shownTotal.toLocaleString("en-IN")} <span className="font-medium text-slate-600">{shownTotal === 1 ? "Business" : "Businesses"}</span>
+                    </>
+                  )}
                 </h2>
-                <p className="text-[12px] text-slate-500">
+                <p className="mt-0.5 text-[13px] text-slate-600">
                   {f.q ? <>Results for “{f.q}”</> : <>Showing results in {f.location || "Warangal"}</>}
                 </p>
               </div>
-              <div className="flex items-center gap-2.5">
-                <label htmlFor="sort" className="hidden text-[12px] font-medium text-slate-600 sm:block">Sort by</label>
-                <select id="sort" className="select h-9 w-auto min-w-[160px] text-[12px]" value={sort} onChange={(e) => update({ sort: e.target.value === "recent" ? undefined : e.target.value })}>
-                  {sorts.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
-                </select>
-                <div className="hidden items-center gap-1.5 sm:flex" role="group" aria-label="View">
-                  <button
-                    type="button"
-                    onClick={() => update({ view: undefined }, false)}
-                    aria-pressed={view === "grid"}
-                    className={cn("inline-flex h-9 items-center gap-1.5 rounded-md border px-3 text-[12px] font-semibold transition-all", view === "grid" ? "border-navy-800 bg-navy-800 text-white" : "border-slate-300 bg-white text-navy-800 hover:bg-slate-50")}
-                  >
-                    <LayoutGrid className="h-4 w-4" /> Grid
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => update({ view: "list" }, false)}
-                    aria-pressed={view === "list"}
-                    className={cn("inline-flex h-9 items-center gap-1.5 rounded-md border px-3 text-[12px] font-semibold transition-all", view === "list" ? "border-navy-800 bg-navy-800 text-white" : "border-slate-300 bg-white text-navy-800 hover:bg-slate-50")}
-                  >
-                    <List className="h-4 w-4" /> List
-                  </button>
+
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <label htmlFor="sort" className="hidden text-[13px] font-medium text-slate-600 sm:block">Sort by</label>
+                  <select id="sort" className="select h-10 w-auto min-w-[168px] text-[13px]" value={sort} onChange={(e) => update({ sort: e.target.value === "recent" ? undefined : e.target.value })}>
+                    {sorts.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+                  </select>
+                </div>
+                <div className="hidden items-center overflow-hidden rounded-lg border border-slate-300 bg-white sm:inline-flex" role="group" aria-label="Layout">
+                  <ViewBtn active={view === "grid"} onClick={() => update({ view: undefined }, false)} label="Grid view"><LayoutGrid className="h-4 w-4" /></ViewBtn>
+                  <ViewBtn active={view === "list"} onClick={() => update({ view: "list" }, false)} label="List view"><List className="h-4 w-4" /></ViewBtn>
                 </div>
               </div>
             </div>
 
-            {/* Active filter chips */}
-            {activeCount > 0 && (
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                {f.category && <Chip label={f.category} onRemove={() => set({ category: "" })} />}
-                {f.industry && <Chip label={f.industry} onRemove={() => set({ industry: "" })} />}
-                {f.location && <Chip label={f.location} onRemove={() => set({ location: "" })} />}
-                {f.type.map((t) => <Chip key={t} label={t} onRemove={() => set({ type: f.type.filter((x) => x !== t) })} />)}
-                {f.verified && <Chip label="Verified" onRemove={() => set({ verified: false })} />}
-                {f.rating > 0 && <Chip label={`${f.rating}+ stars`} onRemove={() => set({ rating: 0 })} />}
-                {f.year !== "Any Year" && <Chip label={f.year} onRemove={() => set({ year: "Any Year" })} />}
-                {f.ps && <Chip label={f.ps} onRemove={() => set({ ps: "" })} />}
-                {f.membership !== "Any" && <Chip label={f.membership} onRemove={() => set({ membership: "Any" })} />}
+            {chips.length > 0 && (
+              <div className="mt-4 flex flex-wrap items-center gap-2" aria-label="Active filters">
+                {chips.map((c) => <Chip key={c.id} label={c.label} onRemove={c.onRemove} />)}
+                <button type="button" onClick={clear} className={cn("rounded px-1.5 py-1 text-[13px] font-semibold text-navy-700 hover:text-navy-900 hover:underline", FOCUS)}>
+                  Clear all
+                </button>
               </div>
             )}
 
-            {businessesLoading ? <div className="mt-6"><BusinessCardShimmer count={6} /></div> : pageItems.length === 0 ? (
-              <div className="mt-6 rounded-xl border border-dashed border-slate-300 bg-white p-12 text-center">
-                <Search className="mx-auto h-8 w-8 text-slate-300" />
-                <h3 className="mt-3 text-[16px] font-bold text-navy-900">Welcome — no businesses yet</h3>
-                <p className="mt-1 text-[13px] text-slate-500">Published real businesses will appear here. Add the first business to get started.</p>
-                <Link to="/dashboard" className="btn-navy mt-4 inline-flex px-5 py-2.5 text-xs">Add a business</Link>
+            {businessesLoading ? (
+              <div className="mt-6"><BusinessCardShimmer count={6} /></div>
+            ) : pageItems.length === 0 ? (
+              <div className="mt-6 rounded-xl border border-dashed border-slate-300 border-t-2 border-t-gold-500 bg-white px-6 py-14 text-center">
+                <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-navy-50 text-navy-700" aria-hidden="true"><Search className="h-6 w-6" /></span>
+                <h3 className="mt-4 text-[18px] font-bold tracking-tight text-navy-900">
+                  {activeCount > 0 ? "No businesses match your criteria" : "No businesses listed yet"}
+                </h3>
+                <p className="mx-auto mt-1.5 max-w-md text-[14px] leading-relaxed text-slate-600">
+                  {activeCount > 0
+                    ? "Try removing a filter, checking your spelling, or searching a broader term."
+                    : "Published businesses will appear here. Add the first business to get started."}
+                </p>
+                <div className="mt-6 flex flex-wrap justify-center gap-3">
+                  {activeCount > 0 && (
+                    <button type="button" onClick={clear} className={cn("btn-navy min-h-[44px] px-6 text-[13px]", FOCUS)}>Clear all filters</button>
+                  )}
+                  <Link
+                    to="/dashboard"
+                    className={cn(
+                      "inline-flex min-h-[44px] items-center rounded-md px-6 text-[13px] font-semibold",
+                      EASE,
+                      FOCUS,
+                      activeCount > 0 ? "border border-slate-300 text-navy-800 hover:bg-navy-50" : "btn-navy",
+                    )}
+                  >
+                    Add a business
+                  </Link>
+                </div>
               </div>
             ) : (
-              <div key={`${view}-${safePage}-${params.toString()}`} className={cn("mt-5 grid gap-4", view === "grid" ? "sm:grid-cols-2 xl:grid-cols-3" : "grid-cols-1")}>
+              <div key={`${view}-${safePage}-${params.toString()}`} className={cn("mt-6 grid gap-5", view === "grid" ? "sm:grid-cols-2 xl:grid-cols-3" : "grid-cols-1")}>
                 {pageItems.map((b, i) => (
-                  <Reveal key={b.slug} delay={i * 60}>
+                  <Reveal key={b.slug} delay={i * 40}>
                     <BusinessCard b={b} view={view} />
                   </Reveal>
                 ))}
               </div>
             )}
 
-            {/* Pagination */}
-            {results.length > 0 && (
-              <div className="mt-8 flex flex-col items-center justify-between gap-3 sm:flex-row">
-                <nav aria-label="Pagination" className="flex items-center gap-1.5">
-                  <PageBtn disabled={safePage === 1} onClick={() => goPage(safePage - 1)} aria-label="Previous page"><ArrowLeft className="h-4 w-4" /></PageBtn>
-                  {Array.from({ length: totalPages }).map((_, i) => (
-                    <PageBtn key={i} active={safePage === i + 1} onClick={() => goPage(i + 1)} aria-current={safePage === i + 1 ? "page" : undefined}>{i + 1}</PageBtn>
-                  ))}
-                  <PageBtn disabled={safePage === totalPages} onClick={() => goPage(safePage + 1)} aria-label="Next page"><ArrowRight className="h-4 w-4" /></PageBtn>
-                </nav>
-                <p className="text-[12px] text-slate-500">
-                  Showing {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, results.length)} of {results.length} businesses
+            {!businessesLoading && results.length > 0 && (
+              <div className="mt-10 flex flex-col items-center justify-between gap-4 border-t border-line pt-6 sm:flex-row">
+                <p className="text-[13px] text-slate-600">
+                  Showing <span className="font-semibold text-navy-900">{(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, results.length)}</span> of{" "}
+                  <span className="font-semibold text-navy-900">{results.length.toLocaleString("en-IN")}</span> businesses
                 </p>
+                {totalPages > 1 && (
+                  <nav aria-label="Pagination" className="flex items-center gap-1.5">
+                    <PageBtn disabled={safePage === 1} onClick={() => goPage(safePage - 1)} aria-label="Previous page"><ArrowLeft className="h-4 w-4" /></PageBtn>
+                    {pageList(safePage, totalPages).map((n, i) =>
+                      n === "…" ? (
+                        <span key={`gap-${i}`} className="px-1 text-slate-500" aria-hidden="true">…</span>
+                      ) : (
+                        <PageBtn key={n} active={safePage === n} onClick={() => goPage(n)} aria-label={`Page ${n}`} aria-current={safePage === n ? "page" : undefined}>{n}</PageBtn>
+                      ),
+                    )}
+                    <PageBtn disabled={safePage === totalPages} onClick={() => goPage(safePage + 1)} aria-label="Next page"><ArrowRight className="h-4 w-4" /></PageBtn>
+                  </nav>
+                )}
               </div>
             )}
           </section>
         </div>
 
-        {/* Owner CTA */}
-        <Reveal className="my-10 flex flex-col gap-4 rounded-xl border border-line bg-white p-5 shadow-[var(--shadow-card)] sm:flex-row sm:items-center sm:justify-between lg:my-12">
+        {/* ═════════ Owner CTA ═════════ */}
+        <Reveal className="my-12 flex flex-col gap-5 rounded-xl border border-line border-l-4 border-l-gold-500 bg-white p-6 shadow-[var(--shadow-card)] sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
-            <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-navy-50 text-navy-700"><Handshake className="h-7 w-7" strokeWidth={1.6} /></span>
+            <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-navy-900 text-gold-500" aria-hidden="true"><Handshake className="h-7 w-7" strokeWidth={1.6} /></span>
             <div>
-              <h3 className="text-[16px] font-bold text-navy-900">Are you a business owner?</h3>
-              <p className="text-[12.5px] text-slate-600">List your business on WS Hub and get discovered by customers, partners and investors.</p>
+              <h3 className="text-[17px] font-bold tracking-tight text-navy-900">Are you a business owner?</h3>
+              <p className="mt-0.5 max-w-xl text-[14px] leading-relaxed text-slate-600">List your business on WS Hub and get discovered by customers, partners and investors.</p>
             </div>
           </div>
-          <Link to="/signup" className="inline-flex shrink-0 items-center justify-center gap-2 rounded-md bg-gold-500 px-5 py-3 text-[13px] font-bold text-navy-900 transition-all hover:-translate-y-0.5 hover:bg-gold-400 hover:shadow-[0_12px_24px_-10px_rgba(226,176,74,0.9)]">
-            Register Your Business <ArrowRight className="h-4 w-4" />
+          <Link
+            to="/signup"
+            className={cn("inline-flex min-h-[46px] shrink-0 items-center justify-center gap-2 rounded-lg bg-navy-900 px-6 text-[14px] font-semibold text-white hover:bg-navy-800 hover:shadow-[0_12px_24px_-12px_rgba(10,25,60,0.8)]", EASE, FOCUS)}
+          >
+            Register Your Business <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </Link>
         </Reveal>
       </div>
 
-      {/* Mobile filter drawer */}
-      <div className={cn("fixed inset-0 z-[60] lg:hidden", drawer ? "pointer-events-auto" : "pointer-events-none")} aria-hidden={!drawer}>
-        <div className={cn("absolute inset-0 bg-navy-950/60 transition-opacity duration-300", drawer ? "opacity-100" : "opacity-0")} onClick={() => setDrawer(false)} />
+      {/* ═════════ Mobile filter drawer ═════════ */}
+      <div className={cn("fixed inset-0 z-[60] lg:hidden", drawer ? "visible" : "invisible transition-[visibility] delay-300")} aria-hidden={!drawer}>
+        <div className={cn("absolute inset-0 bg-navy-950/60 backdrop-blur-[2px] transition-opacity duration-300 motion-reduce:transition-none", drawer ? "opacity-100" : "opacity-0")} onClick={closeDrawer} />
         <div
           role="dialog"
           aria-modal="true"
           aria-label="Filters"
-          className={cn("absolute inset-y-0 left-0 flex w-[86%] max-w-[340px] flex-col bg-white shadow-2xl transition-transform duration-400 ease-[cubic-bezier(0.22,1,0.36,1)]", drawer ? "translate-x-0" : "-translate-x-full")}
+          className={cn(
+            "absolute inset-y-0 left-0 flex w-[88%] max-w-[360px] flex-col bg-white shadow-2xl transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+            drawer ? "translate-x-0" : "-translate-x-full",
+          )}
         >
-          <div className="flex items-center justify-between border-b border-line px-5 py-4">
-            <span className="text-[15px] font-bold text-navy-900">Refine results</span>
-            <button type="button" aria-label="Close filters" onClick={() => setDrawer(false)} className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100"><X className="h-5 w-5" /></button>
+          <div className="flex items-center justify-between border-b border-line bg-navy-900 px-5 py-4 text-white">
+            <span className="text-[16px] font-semibold tracking-tight">Refine results</span>
+            <button ref={drawerCloseRef} type="button" aria-label="Close filters" onClick={closeDrawer} className={cn("flex h-10 w-10 items-center justify-center rounded-md text-white/90 hover:bg-white/10", FOCUS_DARK)}>
+              <X className="h-5 w-5" />
+            </button>
           </div>
           <div className="flex-1 overflow-y-auto p-5"><FilterPanel f={f} set={set} clear={clear} activeCount={activeCount} categories={categoryOptions} /></div>
-          <div className="border-t border-line p-4">
-            <button type="button" onClick={() => setDrawer(false)} className="btn-navy w-full py-3 text-sm">Show {results.length} results</button>
+          <div className="border-t border-line bg-white p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+            <button type="button" onClick={closeDrawer} className={cn("min-h-[48px] w-full rounded-lg bg-gold-500 text-[15px] font-semibold text-navy-900 hover:bg-gold-400", EASE, FOCUS)}>
+              Show {shownTotal.toLocaleString("en-IN")} {shownTotal === 1 ? "business" : "businesses"}
+            </button>
           </div>
         </div>
       </div>
@@ -621,25 +732,76 @@ export default function BusinessDirectory() {
   );
 }
 
+/* ───────────────────────── Sub-components ───────────────────────── */
+
+function ChipBtn({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={cn(
+        "inline-flex min-h-[40px] shrink-0 items-center rounded-full border px-4 text-[13px] font-medium",
+        EASE,
+        FOCUS,
+        active ? "border-navy-900 bg-navy-900 text-white shadow-sm" : "border-slate-300 bg-white text-slate-700 hover:border-navy-700 hover:bg-navy-50 hover:text-navy-900",
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+function ViewBtn({ active, onClick, label, children }: { active: boolean; onClick: () => void; label: string; children: ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      aria-label={label}
+      className={cn("flex h-10 w-10 items-center justify-center", EASE, FOCUS, active ? "bg-navy-900 text-white" : "text-navy-800 hover:bg-navy-50")}
+    >
+      {children}
+    </button>
+  );
+}
+
 function Chip({ label, onRemove }: { label: string; onRemove: () => void }) {
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-navy-50 py-1 pl-3 pr-1.5 text-[11.5px] font-medium text-navy-800">
+    <span className="inline-flex items-center gap-1 rounded-full border border-navy-100 bg-navy-50 py-1 pl-3 pr-1 text-[13px] font-medium text-navy-800">
       {label}
-      <button type="button" onClick={onRemove} aria-label={`Remove ${label}`} className="rounded-full p-0.5 hover:bg-navy-100"><X className="h-3 w-3" /></button>
+      <button type="button" onClick={onRemove} aria-label={`Remove filter ${label}`} className={cn("flex h-6 w-6 items-center justify-center rounded-full hover:bg-navy-100", FOCUS)}>
+        <X className="h-3.5 w-3.5" />
+      </button>
     </span>
   );
 }
 
-function PageBtn({ active, className, ...rest }: React.ButtonHTMLAttributes<HTMLButtonElement> & { active?: boolean }) {
+function PageBtn({ active, className, ...rest }: ButtonHTMLAttributes<HTMLButtonElement> & { active?: boolean }) {
   return (
     <button
       type="button"
       className={cn(
-        "inline-flex h-9 min-w-9 items-center justify-center rounded-md border px-2.5 text-[12.5px] font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-40",
-        active ? "border-navy-800 bg-navy-800 text-white" : "border-slate-300 bg-white text-navy-800 hover:border-navy-700 hover:bg-navy-50",
+        "inline-flex h-10 min-w-10 items-center justify-center rounded-md border px-3 text-[13px] font-semibold disabled:cursor-not-allowed disabled:opacity-40",
+        EASE,
+        FOCUS,
+        active ? "border-navy-900 bg-navy-900 text-white" : "border-slate-300 bg-white text-navy-800 hover:border-navy-700 hover:bg-navy-50",
         className,
       )}
       {...rest}
     />
   );
+}
+
+/** 1 … 4 5 6 … 20 — keeps pagination compact. */
+function pageList(current: number, total: number): (number | "…")[] {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+  const out: (number | "…")[] = [1];
+  const start = Math.max(2, current - 1);
+  const end = Math.min(total - 1, current + 1);
+  if (start > 2) out.push("…");
+  for (let i = start; i <= end; i++) out.push(i);
+  if (end < total - 1) out.push("…");
+  out.push(total);
+  return out;
 }

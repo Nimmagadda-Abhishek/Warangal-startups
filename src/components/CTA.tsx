@@ -1,6 +1,11 @@
 import { Link } from "react-router-dom";
-import { Building2, Rocket, UserPlus } from "lucide-react";
 import { Reveal } from "./Reveal";
+
+const focusRing =
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2 focus-visible:ring-offset-navy-950";
+
+const base =
+  "inline-flex h-12 items-center justify-center rounded-md px-6 text-[14px] font-semibold transition-colors duration-200 motion-reduce:transition-none";
 
 export function CTA() {
   return (
@@ -9,56 +14,45 @@ export function CTA() {
         src="/images/cta-bg.jpg"
         alt=""
         loading="lazy"
-        className="absolute inset-0 h-full w-full object-cover opacity-50"
+        className="absolute inset-0 h-full w-full object-cover opacity-45"
       />
-      <div className="absolute inset-0 bg-gradient-to-r from-navy-950/90 via-navy-900/75 to-navy-950/80" />
+      <div className="absolute inset-0 bg-gradient-to-r from-navy-950/95 via-navy-900/80 to-navy-950/70" />
       <div className="absolute inset-0 bg-gradient-to-b from-navy-950/40 via-transparent to-navy-950/60" />
 
-      <div className="relative mx-auto max-w-[1280px] px-4 py-12 sm:px-6 lg:px-8 lg:py-14">
-        <div className="grid items-end gap-8 lg:grid-cols-[minmax(0,1fr)_auto]">
+      <div className="relative mx-auto max-w-[1280px] px-4 py-14 sm:px-6 lg:px-8 lg:py-20">
+        <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-16">
           <Reveal>
-            <h2 id="cta-title" className="max-w-[520px] text-[26px] font-bold leading-tight sm:text-[30px]">
-              Be Part of Warangal’s
-              <br className="hidden sm:block" /> Growing Business Ecosystem
+            <h2
+              id="cta-title"
+              className="max-w-[600px] font-serif text-[30px] font-medium leading-[1.15] tracking-[-0.01em] sm:text-[38px]"
+            >
+              Be part of Warangal’s growing business ecosystem.
             </h2>
-            <p className="mt-4 max-w-[520px] text-[12.5px] leading-relaxed text-white/85 sm:text-[13px]">
-              Whether you are a founder, entrepreneur, investor, professional or established business — WS Hub is
-              built to help you connect, collaborate and grow.
+            <p className="mt-4 max-w-[540px] text-[16px] leading-[1.65] text-white/85">
+              Whether you are a founder, investor, professional or an established business, WS Hub helps you connect,
+              collaborate and grow.
+            </p>
+            <p className="mt-6 max-w-[540px] border-l-2 border-gold-500 pl-4 font-serif text-[18px] italic leading-snug text-white/90">
+              Stronger businesses, a brighter Warangal.
             </p>
           </Reveal>
 
-          <Reveal delay={150} className="flex flex-col items-start gap-8 lg:items-end">
-            <p className="text-[16px] italic tracking-wide text-white/90 sm:text-[17px]">
-              <span className="relative">
-                Stronger Businesses
-                <span className="absolute -bottom-2 left-0 h-[2px] w-full origin-left bg-gold-500" />
-              </span>{" "}
-              <span className="ml-1">A Brighter Warangal</span>
-            </p>
-
-            <div className="flex flex-wrap gap-3">
-              <Link
-                to="/membership"
-                className="inline-flex items-center gap-2.5 rounded-md bg-gold-500 px-6 py-3 text-[13px] font-bold text-navy-900 transition-all duration-300 hover:-translate-y-0.5 hover:bg-gold-400 hover:shadow-[0_12px_24px_-10px_rgba(226,176,74,0.9)]"
-              >
-                <UserPlus className="h-4 w-4" strokeWidth={2.2} />
-                Join WS Hub
-              </Link>
-              <Link
-                to="/businesses/manage"
-                className="inline-flex items-center gap-2.5 rounded-md border border-white/80 px-6 py-3 text-[13px] font-semibold text-white transition-all duration-300 hover:-translate-y-0.5 hover:border-white hover:bg-white hover:text-navy-900"
-              >
-                <Building2 className="h-4 w-4" strokeWidth={2} />
-                List Your Business
-              </Link>
-              <Link
-                to="/startups"
-                className="inline-flex items-center gap-2.5 rounded-md border border-white/80 px-6 py-3 text-[13px] font-semibold text-white transition-all duration-300 hover:-translate-y-0.5 hover:border-white hover:bg-white hover:text-navy-900"
-              >
-                <Rocket className="h-4 w-4" strokeWidth={2} />
-                Register Your Startup
-              </Link>
-            </div>
+          <Reveal delay={150} className="flex flex-col gap-3">
+            <Link to="/membership" className={`${base} bg-gold-500 text-navy-900 hover:bg-gold-400 ${focusRing}`}>
+              Join WS Hub
+            </Link>
+            <Link
+              to="/businesses/manage"
+              className={`${base} border border-white/60 text-white hover:border-white hover:bg-white/10 ${focusRing}`}
+            >
+              List your business
+            </Link>
+            <Link
+              to="/dashboard?tab=startup"
+              className={`${base} border border-white/60 text-white hover:border-white hover:bg-white/10 ${focusRing}`}
+            >
+              Register your startup
+            </Link>
           </Reveal>
         </div>
       </div>

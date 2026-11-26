@@ -1,88 +1,112 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, Heart, MessageCircle } from "lucide-react";
-
-type IconProps = { className?: string };
-
-function Linkedin({ className }: IconProps) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden="true">
-      <path d="M20.45 20.45h-3.55v-5.57c0-1.33-.03-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.67H9.36V9h3.41v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28ZM5.34 7.43a2.06 2.06 0 1 1 0-4.12 2.06 2.06 0 0 1 0 4.12ZM7.12 20.45H3.56V9h3.56v11.45ZM22.22 0H1.77C.79 0 0 .77 0 1.73v20.54C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.73V1.73C24 .77 23.2 0 22.22 0Z" />
-    </svg>
-  );
-}
-
-function Instagram({ className }: IconProps) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <rect x="2" y="2" width="20" height="20" rx="5" />
-      <circle cx="12" cy="12" r="4" />
-      <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none" />
-    </svg>
-  );
-}
-
-function Youtube({ className }: IconProps) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden="true">
-      <path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.6 12 3.6 12 3.6s-7.5 0-9.4.5A3 3 0 0 0 .5 6.2C0 8.1 0 12 0 12s0 3.9.5 5.8a3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1c.5-1.9.5-5.8.5-5.8s0-3.9-.5-5.8ZM9.6 15.6V8.4l6.2 3.6-6.2 3.6Z" />
-    </svg>
-  );
-}
 import { Logo } from "./Logo";
 import { Reveal } from "./Reveal";
 
-const columns: { title: string; links: string[] }[] = [
-  { title: "Explore", links: ["Businesses", "Startups", "Founders", "Investors", "Events", "Map"] },
+/* Routes are explicit so each one can be checked and edited on its own.
+   Several of these (Map, Collaboration, Achievements, Reviews, Plans, Compare,
+   For Businesses, For Startups and the policy pages) were generated from the
+   label before: confirm each page exists. */
+const columns: { title: string; links: { label: string; to: string }[] }[] = [
+  {
+    title: "Explore",
+    links: [
+      { label: "Businesses", to: "/businesses" },
+      { label: "Startups", to: "/startups" },
+      { label: "Founders", to: "/founders" },
+      { label: "Investors", to: "/investors" },
+      { label: "Events", to: "/events" },
+      { label: "Map", to: "/map" },
+    ],
+  },
   {
     title: "Community",
-    links: ["Requirements", "Collaboration", "Jobs", "Stories", "Achievements", "Reviews"],
+    links: [
+      { label: "Requirements", to: "/requirements" },
+      { label: "Collaboration", to: "/collaboration" },
+      { label: "Jobs", to: "/jobs" },
+      { label: "Stories", to: "/stories" },
+      { label: "Achievements", to: "/achievements" },
+      { label: "Reviews", to: "/reviews" },
+    ],
   },
-  { title: "Support", links: ["Contact Us", "About Us", "Privacy Policy", "Terms of Service", "Refund Policy", "Shipping Policy"] },
-  { title: "Membership", links: ["Plans", "Compare", "For Businesses", "For Startups"] },
+  {
+    title: "Membership",
+    links: [
+      { label: "Plans", to: "/plans" },
+      { label: "Compare", to: "/compare" },
+      { label: "For businesses", to: "/for-businesses" },
+      { label: "For startups", to: "/for-startups" },
+    ],
+  },
+  {
+    title: "Support",
+    links: [
+      { label: "Contact us", to: "/contact-us" },
+      { label: "About us", to: "/about-us" },
+      { label: "Privacy policy", to: "/privacy-policy" },
+      { label: "Terms of service", to: "/terms-of-service" },
+      { label: "Refund policy", to: "/refund-policy" },
+      { label: "Shipping policy", to: "/shipping-policy" },
+    ],
+  },
 ];
 
-function XIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden="true">
-      <path d="M18.244 2H21.5l-7.5 8.57L22.8 22h-6.9l-5.4-7.06L4.3 22H1.04l8.02-9.17L.6 2h7.07l4.88 6.45L18.24 2Zm-1.21 18h1.8L7.05 3.9H5.12L17.03 20Z" />
-    </svg>
-  );
-}
-
+/* TODO: replace with the real WS Hub profile URLs (these point at the platform home pages) */
 const socials = [
-  { label: "LinkedIn", icon: Linkedin, href: "https://linkedin.com" },
-  { label: "Instagram", icon: Instagram, href: "https://instagram.com" },
-  { label: "YouTube", icon: Youtube, href: "https://youtube.com" },
-  { label: "X", icon: XIcon, href: "https://x.com" },
+  { label: "LinkedIn", href: "https://linkedin.com" },
+  { label: "Instagram", href: "https://instagram.com" },
+  { label: "YouTube", href: "https://youtube.com" },
+  { label: "X", href: "https://x.com" },
 ];
 
-export function Footer() {
+const focusRing = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy-700 focus-visible:ring-offset-2";
+
+type Props = {
+  /** Send the address to your backend. Throw to show an error. If omitted, the form only shows the success message (nothing is stored). */
+  onSubscribe?: (email: string) => Promise<void> | void;
+  /** Opens your chat widget. The floating button is only shown when this is provided. */
+  onChatOpen?: () => void;
+};
+
+export function Footer({ onSubscribe, onChatOpen }: Props) {
   const [email, setEmail] = useState("");
-  const [done, setDone] = useState(false);
+  const [status, setStatus] = useState<"idle" | "sending" | "done" | "error">("idle");
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim() || status === "sending") return;
+    setStatus("sending");
+    try {
+      await onSubscribe?.(email.trim());
+      setStatus("done");
+      setEmail("");
+    } catch {
+      setStatus("error");
+    }
+  };
 
   return (
-    <footer className="relative bg-white">
-      <div className="mx-auto max-w-[1280px] px-4 pb-6 pt-10 sm:px-6 lg:px-8 lg:pt-12">
-        <Reveal className="grid gap-10 md:grid-cols-2 lg:grid-cols-[1.35fr_repeat(4,minmax(0,0.8fr))_1.5fr] lg:gap-6">
+    <footer className="relative border-t border-line bg-white">
+      <div className="mx-auto max-w-[1280px] px-4 pb-8 pt-14 sm:px-6 lg:px-8 lg:pt-16">
+        <Reveal className="grid gap-12 lg:grid-cols-[1.5fr_repeat(4,minmax(0,1fr))] lg:gap-8">
           {/* Brand */}
-          <div className="md:col-span-2 lg:col-span-1">
+          <div className="max-w-[340px]">
             <Logo dark size="lg" />
-            <p className="mt-5 text-[12px] font-medium text-navy-800">
-              Connect <span className="mx-1 text-slate-400">•</span> Collaborate{" "}
-              <span className="mx-1 text-slate-400">•</span> Grow
+            <p className="mt-5 text-[14px] leading-relaxed text-slate-600">
+              Warangal’s directory of businesses, startups, founders and investors.
             </p>
-            <ul className="mt-5 flex items-center gap-4">
-              {socials.map(({ label, icon: Icon, href }) => (
-                <li key={label}>
+            <ul className="mt-5 flex flex-wrap gap-x-5 gap-y-1">
+              {socials.map((s) => (
+                <li key={s.label}>
                   <a
-                    href={href}
+                    href={s.href}
                     target="_blank"
-                    rel="noreferrer"
-                    aria-label={label}
-                    className="flex h-8 w-8 items-center justify-center rounded-md text-navy-800 transition-all duration-300 hover:-translate-y-0.5 hover:bg-navy-50 hover:text-navy-600"
+                    rel="noopener noreferrer"
+                    className={`inline-flex min-h-[36px] items-center rounded-sm text-[14px] font-medium text-navy-800 underline decoration-navy-800/25 underline-offset-[6px] transition-colors hover:decoration-gold-500 motion-reduce:transition-none ${focusRing}`}
                   >
-                    <Icon className="h-5 w-5" />
+                    {s.label}
+                    <span className="sr-only"> (opens in a new tab)</span>
                   </a>
                 </li>
               ))}
@@ -92,34 +116,38 @@ export function Footer() {
           {/* Link columns */}
           {columns.map((col) => (
             <nav key={col.title} aria-label={col.title}>
-              <h3 className="text-[12.5px] font-bold text-navy-900">{col.title}</h3>
-              <ul className="mt-3 space-y-2">
+              <h3 className="font-serif text-[17px] font-medium text-navy-900">{col.title}</h3>
+              <ul className="mt-3 space-y-0.5">
                 {col.links.map((l) => (
-                  <li key={l}>
+                  <li key={l.to}>
                     <Link
-                      to={`/${l.toLowerCase().replace(/\s+/g, "-")}`}
-                      className="group relative inline-block text-[11.5px] text-slate-600 transition-colors hover:text-navy-800"
+                      to={l.to}
+                      className={`group relative inline-flex min-h-[36px] items-center rounded-sm text-[14px] text-slate-600 transition-colors hover:text-navy-900 motion-reduce:transition-none ${focusRing}`}
                     >
-                      {l}
-                      <span className="absolute -bottom-0.5 left-0 h-px w-full origin-left scale-x-0 bg-gold-500 transition-transform duration-300 group-hover:scale-x-100" />
+                      {l.label}
+                      <span
+                        aria-hidden="true"
+                        className="absolute bottom-1 left-0 h-px w-full origin-left scale-x-0 bg-gold-500 transition-transform duration-300 group-hover:scale-x-100 motion-reduce:transition-none"
+                      />
                     </Link>
                   </li>
                 ))}
               </ul>
             </nav>
           ))}
+        </Reveal>
 
-          {/* Newsletter */}
-          <div className="md:col-span-2 lg:col-span-1">
-            <h3 className="text-[14px] font-bold text-navy-900">Stay Updated</h3>
-            <p className="mt-1.5 text-[11.5px] text-slate-600">Subscribe to our newsletter</p>
-            <form
-              className="mt-3 flex overflow-hidden rounded-md border border-slate-300 bg-white transition-shadow focus-within:border-navy-700 focus-within:ring-2 focus-within:ring-navy-700/15"
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (email.trim()) setDone(true);
-              }}
-            >
+        {/* Newsletter */}
+        <div className="mt-14 grid items-center gap-6 border-t border-line pt-10 lg:grid-cols-2 lg:gap-12">
+          <div>
+            <h3 className="font-serif text-[22px] font-medium text-navy-900">Stay updated</h3>
+            <p className="mt-1.5 max-w-[440px] text-[14px] leading-relaxed text-slate-600">
+              New listings, events and founder stories from WS Hub, in your inbox.
+            </p>
+          </div>
+
+          <div>
+            <form className="flex max-w-[480px] flex-col gap-2 sm:flex-row" onSubmit={submit} noValidate={false}>
               <label htmlFor="newsletter" className="sr-only">
                 Email address
               </label>
@@ -127,44 +155,67 @@ export function Footer() {
                 id="newsletter"
                 type="email"
                 required
+                autoComplete="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Enter your email"
-                className="h-9 min-w-0 flex-1 bg-transparent px-3 text-[11.5px] text-ink placeholder:text-slate-400 focus:outline-none"
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (status !== "sending") setStatus("idle");
+                }}
+                placeholder="Your email address"
+                aria-describedby="newsletter-status"
+                className="h-12 min-w-0 flex-1 rounded-md border border-slate-300 bg-white px-4 text-[14px] text-ink placeholder:text-slate-500 focus:border-navy-700 focus:outline-none focus:ring-2 focus:ring-navy-700/20"
               />
               <button
                 type="submit"
-                aria-label="Subscribe"
-                className="flex w-9 shrink-0 items-center justify-center bg-gold-500 text-navy-900 transition-colors hover:bg-gold-400"
+                disabled={status === "sending"}
+                className={`h-12 shrink-0 rounded-md bg-gold-500 px-6 text-[14px] font-semibold text-navy-900 transition-colors hover:bg-gold-400 disabled:opacity-60 motion-reduce:transition-none ${focusRing}`}
               >
-                <ArrowRight className="h-4 w-4" strokeWidth={2.4} />
+                {status === "sending" ? "Subscribing…" : "Subscribe"}
               </button>
             </form>
             <p
-              className={`mt-2 text-[11px] text-verified transition-opacity duration-300 ${done ? "opacity-100" : "opacity-0"}`}
-              aria-live="polite"
+              id="newsletter-status"
+              role={status === "error" ? "alert" : "status"}
+              className={`mt-2 min-h-[20px] text-[13px] ${status === "error" ? "text-red-600" : "text-verified"}`}
             >
-              Thanks! You’re on the list.
+              {status === "done" && "Thanks, you’re on the list."}
+              {status === "error" && "We couldn’t subscribe you just now. Please try again."}
             </p>
           </div>
-        </Reveal>
+        </div>
 
-        <div className="mt-8 flex flex-col items-start justify-between gap-2 border-t border-line pt-4 text-[11px] text-slate-600 sm:flex-row sm:items-center">
-          <p>© 2026 WS Hub. All rights reserved.</p><p>Developed by <a href="https://abhishek-nimmagadda.vercel.app/" target="_blank" rel="noopener noreferrer" className="font-semibold text-navy-700 underline-offset-2 hover:text-navy-900 hover:underline">Abhishek Nimmagadda</a></p>
-          <p className="inline-flex items-center gap-1.5">
-            Proudly for Warangal <Heart className="h-3.5 w-3.5 text-red-500" fill="currentColor" strokeWidth={0} />
+        {/* Bottom bar */}
+        <div className="mt-10 flex flex-col items-start justify-between gap-2 border-t border-line pt-6 text-[13px] text-slate-600 sm:flex-row sm:items-center">
+          <p>© {new Date().getFullYear()} WS Hub. All rights reserved.</p>
+          <p>
+            Developed by{" "}
+            <a
+              href="https://abhishek-nimmagadda.vercel.app/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`rounded-sm font-semibold text-navy-700 underline underline-offset-4 hover:text-navy-900 ${focusRing}`}
+            >
+              Abhishek Nimmagadda
+              <span className="sr-only"> (opens in a new tab)</span>
+            </a>
           </p>
+          <p>Proudly for Warangal</p>
         </div>
       </div>
 
-      {/* Floating chat */}
-      <button
-        type="button"
-        aria-label="Open chat"
-        className="fixed bottom-20 right-4 z-40 flex h-12 w-12 lg:bottom-6 lg:right-6 items-center justify-center rounded-full bg-navy-900 text-white shadow-[0_10px_30px_-8px_rgba(6,19,48,0.6)] transition-all duration-300 hover:-translate-y-1 hover:bg-navy-700 hover:shadow-[0_16px_34px_-8px_rgba(6,19,48,0.7)]"
-      >
-        <MessageCircle className="h-5 w-5" strokeWidth={2} />
-      </button>
+      {/* Floating chat: only rendered when there is a handler to open */}
+      {onChatOpen && (
+        <button
+          type="button"
+          onClick={onChatOpen}
+          aria-label="Open chat"
+          className="fixed bottom-20 right-4 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-navy-900 text-white shadow-[0_10px_30px_-8px_rgba(6,19,48,0.6)] transition-colors hover:bg-navy-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2 motion-reduce:transition-none lg:bottom-6 lg:right-6"
+        >
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-[22px] w-[22px]" aria-hidden="true" focusable="false">
+            <path d="M4 5.6c0-.9.7-1.6 1.6-1.6h8.8c.9 0 1.6.7 1.6 1.6v6.2c0 .9-.7 1.6-1.6 1.6H9.2L5.9 16v-2.6h0c-1 0-1.9-.7-1.9-1.6Z" />
+          </svg>
+        </button>
+      )}
     </footer>
   );
 }

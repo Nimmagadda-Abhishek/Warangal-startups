@@ -1,77 +1,98 @@
 import { useEffect, useRef, useState } from "react";
-import {
-  Rocket,
-  User,
-  BarChart3,
-  Users,
-  ClipboardCheck,
-  CalendarCheck,
-  Building2,
-  type LucideIcon,
-} from "lucide-react";
 import { Reveal } from "./Reveal";
 
-interface Stat {
-  value: number;
-  suffix: string;
-  label: string;
-  icon: LucideIcon;
-}
+/* Live figures from the API. Every field is optional; anything missing
+   falls back to the placeholder in `stats` below. */
+export type ApiStats = {
+  businesses?: number;
+  startups?: number;
+  founders?: number;
+  investors?: number;
+  users?: number; // shown as "Members"
+  jobs?: number;
+  events?: number;
+};
 
+type Stat = { key: keyof ApiStats; label: string; fallback: number };
+
+/* FALLBACK FIGURES ARE PLACEHOLDERS. Replace them with real numbers, or feed
+   every field through `apiStats`, before launch. A "+" is shown only on these. */
 const stats: Stat[] = [
-  { value: 1250, suffix: "+", label: "Businesses", icon: Building2 },
-  { value: 430, suffix: "+", label: "Startups", icon: Rocket },
-  { value: 700, suffix: "+", label: "Founders", icon: User },
-  { value: 95, suffix: "+", label: "Investors", icon: BarChart3 },
-  { value: 3200, suffix: "+", label: "Members", icon: Users },
-  { value: 250, suffix: "+", label: "Jobs", icon: ClipboardCheck },
-  { value: 65, suffix: "+", label: "Events", icon: CalendarCheck },
+  { key: "businesses", label: "Businesses", fallback: 1250 },
+  { key: "startups", label: "Startups", fallback: 430 },
+  { key: "founders", label: "Founders", fallback: 700 },
+  { key: "investors", label: "Investors", fallback: 95 },
+  { key: "users", label: "Members", fallback: 3200 },
+  { key: "jobs", label: "Jobs", fallback: 250 },
+  { key: "events", label: "Events", fallback: 65 },
 ];
 
+function prefersReducedMotion() {
+  return typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+/* Counts from wherever it currently is, so a late API response
+   doesn't snap back to zero. Skips the animation for reduced motion. */
 function useCountUp(target: number, start: boolean, duration = 1400) {
   const [value, setValue] = useState(0);
+  const current = useRef(0);
+
   useEffect(() => {
     if (!start) return;
-    let raf = 0;
+    if (prefersReducedMotion()) {
+      current.current = target;
+      setValue(target);
+      return;
+    }
+    const from = current.current;
     const t0 = performance.now();
+    let raf = 0;
     const tick = (now: number) => {
       const p = Math.min(1, (now - t0) / duration);
       const eased = 1 - Math.pow(1 - p, 3);
-      setValue(Math.round(target * eased));
+      const v = Math.round(from + (target - from) * eased);
+      current.current = v;
+      setValue(v);
       if (p < 1) raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, [start, target, duration]);
+
   return value;
 }
 
-function StatItem({ stat, start }: { stat: Stat; start: boolean }) {
-  const n = useCountUp(stat.value, start);
-  const Icon = stat.icon;
+function StatItem({ label, target, suffix, start, span }: { label: string; target: number; suffix: string; start: boolean; span: boolean }) {
+  const n = useCountUp(target, start);
   return (
-    <li className="flex items-center gap-3 px-2 py-2 lg:px-3">
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-gold-500">
-        <Icon className="h-7 w-7" strokeWidth={1.6} />
-      </span>
-      <div className="leading-tight">
-        <p className="text-[15px] font-bold text-navy-800 tabular-nums">
+    <li className={`bg-white px-5 py-5 lg:px-6 lg:py-6 ${span ? "col-span-2 lg:col-span-1" : ""}`}>
+      <p className="font-serif text-[30px] leading-none tracking-tight text-navy-900 tabular-nums lg:text-[32px]">
+        {/* Animated number is hidden from screen readers; they get the final value. */}
+        <span aria-hidden="true">
           {n.toLocaleString("en-IN")}
-          {stat.suffix}
-        </p>
-        <p className="text-[11px] text-slate-500">{stat.label}</p>
-      </div>
+          {suffix}
+        </span>
+        <span className="sr-only">
+          {target.toLocaleString("en-IN")}
+          {suffix}
+        </span>
+      </p>
+      <p className="mt-2 text-[13px] font-medium text-slate-600">{label}</p>
     </li>
   );
 }
 
-export function Stats({ apiStats }: { apiStats?: { businesses?: number; users?: number } }) {
+export function Stats({ apiStats }: { apiStats?: ApiStats }) {
   const ref = useRef<HTMLUListElement>(null);
   const [start, setStart] = useState(false);
 
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
+    if (typeof IntersectionObserver === "undefined") {
+      setStart(true);
+      return;
+    }
     const io = new IntersectionObserver(
       ([e]) => {
         if (e.isIntersecting) {
@@ -79,24 +100,27 @@ export function Stats({ apiStats }: { apiStats?: { businesses?: number; users?: 
           io.disconnect();
         }
       },
-      { threshold: 0.4 },
+      { threshold: 0.25 },
     );
     io.observe(el);
     return () => io.disconnect();
   }, []);
 
+  const items = stats.map((s) => {
+    const live = apiStats?.[s.key];
+    const isLive = typeof live === "number";
+    return { label: s.label, target: isLive ? live : s.fallback, suffix: isLive ? "" : "+" };
+  });
+  const odd = items.length % 2 === 1;
+
   return (
     <section className="mt-3 lg:mt-4" aria-label="Ecosystem statistics">
       <div className="mx-auto max-w-[1280px] px-4 sm:px-6 lg:px-8">
-        <Reveal delay={100} className="rounded-xl border border-line bg-white shadow-[0_10px_30px_-18px_rgba(10,28,63,0.3)]">
-          <ul
-            ref={ref}
-            className="grid grid-cols-2 gap-x-2 px-3 py-2 sm:grid-cols-4 lg:grid-cols-7 lg:justify-between lg:px-4"
-          >
-            {[{ label: "Businesses", value: apiStats?.businesses ?? 0 }, { label: "Members", value: apiStats?.users ?? 0 }].map((s) => (
-              <li key={s.label} className="flex items-center gap-3 px-2 py-2 lg:px-3">
-                <div><p className="text-[15px] font-bold text-navy-800 tabular-nums">{s.value.toLocaleString("en-IN")}+</p><p className="text-[11px] text-slate-500">{s.label}</p></div>
-              </li>
+        <Reveal delay={100} className="overflow-hidden rounded-xl border border-line bg-white shadow-[0_10px_30px_-18px_rgba(10,28,63,0.3)]">
+          {/* gap-px over a line-coloured background draws the hairline dividers at every breakpoint */}
+          <ul ref={ref} className="grid grid-cols-2 gap-px bg-line lg:grid-cols-7">
+            {items.map((it, i) => (
+              <StatItem key={it.label} {...it} start={start} span={odd && i === items.length - 1} />
             ))}
           </ul>
         </Reveal>

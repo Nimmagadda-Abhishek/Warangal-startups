@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { BadgeCheck, Briefcase, Landmark, MapPin, PieChart, Wallet } from "lucide-react";
 import { investorQuick, investorRanges, investors, investorSectors, ticketLabel, type Investor, type InvestorType } from "../investors";
@@ -8,6 +9,30 @@ import { Avatar } from "../components/ProfileShell";
 import { cn } from "../utils/cn";
 
 const HERO = "https://images.pexels.com/photos/7433919/pexels-photo-7433919.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=700&w=1400";
+
+/* -------------------------------------------------------------------------- */
+/*  Design tokens — flat, high contrast, 44px targets, visible focus           */
+/* -------------------------------------------------------------------------- */
+
+const focusRing =
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy-700 focus-visible:ring-offset-2";
+
+const tones = {
+  neutral: "bg-slate-100 text-slate-700",
+  gold: "bg-gold-100 text-gold-800",
+  success: "bg-emerald-50 text-emerald-800 ring-1 ring-inset ring-emerald-200",
+} as const;
+
+function Pill({ tone = "neutral", children }: { tone?: keyof typeof tones; children: ReactNode }) {
+  return (
+    <span className={cn("inline-flex max-w-full items-center gap-1 whitespace-nowrap rounded-md px-2 py-1 text-[12px] font-semibold", tones[tone])}>
+      <span className="min-w-0 truncate">{children}</span>
+    </span>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+
 const quickToType: Record<string, InvestorType> = {
   "Angel Investors": "Angel Investor", "VC Firms": "VC Firm", "Angel Networks": "Angel Network", "Family Offices": "Family Office", "Corporate Investors": "Corporate", Government: "Government", CSR: "CSR", Accelerators: "Accelerator", Incubators: "Incubator",
 };
@@ -57,31 +82,43 @@ const sortFn = (a: Investor, b: Investor, s: string) =>
 export function InvestorCard({ i, view = "grid" }: { i: Investor; view?: "grid" | "list" }) {
   const list = view === "list";
   return (
-    <article className={cn("card group relative flex overflow-hidden", list ? "flex-col sm:flex-row sm:items-start" : "flex-col")}>
+    <article className={cn("card group relative flex overflow-hidden transition-shadow duration-200 hover:shadow-md", list ? "flex-col sm:flex-row sm:items-start" : "flex-col")}>
       <div className="absolute right-3 top-3 z-10 flex gap-1.5"><SaveBtn type="investor" slug={i.slug} /><ShareBtn title={`${i.name} — ${i.type}`} path={`/investors/${i.slug}`} /></div>
-      {!i.active && <span className="absolute left-3 top-3 rounded-full bg-slate-200 px-2 py-0.5 text-[9.5px] font-semibold text-slate-600">Not active</span>}
-      <div className={cn("flex flex-col items-center px-4 pt-6 text-center", list ? "sm:w-[200px] sm:shrink-0 sm:border-r sm:border-line sm:pb-6" : "")}>
-        <Link to={`/investors/${i.slug}`} className="transition-transform duration-300 group-hover:scale-105"><Avatar initials={i.initials} color={i.color} size="lg" /></Link>
-        {i.verified && <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-navy-800 px-2 py-0.5 text-[9.5px] font-semibold text-white"><BadgeCheck className="h-3 w-3 text-gold-400" /> Verified</span>}
-        <h3 className="mt-2 text-[15px] font-bold text-navy-900"><Link to={`/investors/${i.slug}`} className="hover:text-navy-600">{i.name}</Link></h3>
-        <p className="text-[11.5px] text-slate-500">{i.type}{i.firm !== "Independent" && ` · ${i.firm}`}</p>
+      {!i.active && <span className="absolute left-3 top-3 z-10"><Pill>Not active</Pill></span>}
+
+      <div className={cn("flex flex-col items-center px-4 pt-12 text-center", list ? "sm:w-[210px] sm:shrink-0 sm:border-r sm:border-line sm:pb-6" : "")}>
+        <Link
+          to={`/investors/${i.slug}`}
+          aria-label={`View ${i.name}'s profile`}
+          className={`rounded-full motion-safe:transition-transform motion-safe:duration-200 motion-safe:group-hover:scale-105 ${focusRing}`}
+        >
+          <Avatar initials={i.initials} color={i.color} size="lg" />
+        </Link>
+        {i.verified && <span className="mt-2.5"><Pill tone="success"><BadgeCheck aria-hidden="true" className="h-3.5 w-3.5 shrink-0" /> Verified</Pill></span>}
+        <h3 className="mt-2.5 text-[16px] font-bold leading-tight text-navy-900"><Link to={`/investors/${i.slug}`} className={`rounded hover:text-navy-700 ${focusRing}`}>{i.name}</Link></h3>
+        <p className="mt-0.5 text-[13px] text-slate-600">{i.type}{i.firm !== "Independent" && ` · ${i.firm}`}</p>
       </div>
-      <div className={cn("flex flex-1 flex-col px-4 pb-4", list ? "pt-4 sm:pt-6" : "pt-3")}>
+
+      <div className={cn("flex flex-1 flex-col px-4 pb-4", list ? "pt-4 sm:pt-12" : "pt-3")}>
         <div className="flex flex-wrap justify-center gap-1.5 sm:justify-start">
-          {i.stages.map((s) => <span key={s} className="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">{s}</span>)}
+          {i.stages.map((s) => <Pill key={s}>{s}</Pill>)}
         </div>
-        <div className="mt-2.5 grid grid-cols-2 gap-x-3 gap-y-1 text-[11px] text-slate-500">
-          <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" /> {i.location}</span>
-          <span className="inline-flex items-center gap-1"><Wallet className="h-3 w-3" /> {ticketLabel(i)}</span>
-          <span className="inline-flex items-center gap-1"><PieChart className="h-3 w-3" /> {i.portfolioSize} portfolio</span>
-          <span className="inline-flex items-center gap-1"><Briefcase className="h-3 w-3" /> {i.format.join(", ")}</span>
+
+        <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-1.5 text-[12.5px] text-slate-600">
+          <div className="flex items-center gap-1.5"><MapPin aria-hidden="true" className="h-3.5 w-3.5 shrink-0" /><dt className="sr-only">Location</dt><dd className="truncate">{i.location}</dd></div>
+          <div className="flex items-center gap-1.5"><Wallet aria-hidden="true" className="h-3.5 w-3.5 shrink-0" /><dt className="sr-only">Ticket size</dt><dd className="truncate">{ticketLabel(i)}</dd></div>
+          <div className="flex items-center gap-1.5"><PieChart aria-hidden="true" className="h-3.5 w-3.5 shrink-0" /><dt className="sr-only">Portfolio</dt><dd>{i.portfolioSize} portfolio</dd></div>
+          <div className="flex items-center gap-1.5"><Briefcase aria-hidden="true" className="h-3.5 w-3.5 shrink-0" /><dt className="sr-only">Format</dt><dd className="truncate">{i.format.join(", ")}</dd></div>
+        </dl>
+
+        <p className="mt-3 line-clamp-3 text-center text-[13.5px] leading-6 text-slate-700 sm:text-left">{i.bio}</p>
+
+        <div className="mt-3 flex flex-wrap justify-center gap-1.5 sm:justify-start">
+          {i.sectors.slice(0, 3).map((s) => <Pill key={s} tone="gold">{s}</Pill>)}
         </div>
-        <p className="mt-2.5 text-center text-[12.5px] leading-relaxed text-slate-600 sm:text-left">{i.bio}</p>
-        <div className="mt-2.5 flex flex-wrap justify-center gap-1.5 sm:justify-start">
-          {i.sectors.slice(0, 3).map((s) => <span key={s} className="rounded-md bg-gold-100 px-2 py-0.5 text-[10px] font-semibold text-gold-800">{s}</span>)}
-        </div>
-        <div className="mt-auto space-y-2 pt-3.5">
-          <Link to={`/investors/${i.slug}`} className="btn-navy w-full py-2 text-[11.5px]">View Profile</Link>
+
+        <div className="mt-auto space-y-2 pt-4">
+          <Link to={`/investors/${i.slug}`} className="btn-navy min-h-11 w-full py-2 text-[13px]">View Profile</Link>
           <div className="grid grid-cols-2 gap-2">
             <InterestedBtn investorSlug={i.slug} investorName={i.name} size="sm" />
             <IntroBtn targetType="investor" targetSlug={i.slug} targetName={i.name} size="sm" />
