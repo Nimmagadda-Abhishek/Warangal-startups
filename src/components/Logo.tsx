@@ -37,7 +37,7 @@ export function Logo({ className, dark = false, size = "sm" }: LogoProps) {
             dark ? "text-navy-800/80" : "text-white/85",
           )}
         >
-          {lg ? "Warangal Startups Hub" : "Warangal Startups"}
+          {lg ? "Warangal Startups Hub" : "Warangal Directories"}
         </span>
       </span>
     </Link>
