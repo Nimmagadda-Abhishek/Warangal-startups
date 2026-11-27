@@ -1,4 +1,4 @@
-import { Factory, Hotel, Landmark, Leaf, Megaphone, Package, Scale, Sprout, Truck, Building2, type LucideIcon } from "lucide-react";
+import { ArrowRight, Factory, Hotel, Landmark, Leaf, Megaphone, Package, Scale, Sprout, Truck, Building2, type LucideIcon } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Reveal } from "./Reveal";
 import { filterListingCategories } from "../businesses";
@@ -17,12 +17,31 @@ const categoryIcons: Record<string, LucideIcon> = {
   "energy-sustainability": Leaf,
 };
 
+const homeCategories = [
+  { slug: "real-estate-construction", label: "Real Estate & Construction" },
+  { slug: "finance-insurance", label: "Finance & Insurance" },
+  { slug: "manufacturing", label: "Manufacturing" },
+  { slug: "agriculture-farming", label: "Agriculture & Farming" },
+  { slug: "logistics-transport", label: "Logistics & Transport" },
+  { slug: "travel-hospitality", label: "Travel & Hospitality" },
+  { slug: "marketing-media", label: "Marketing & Media" },
+  { slug: "legal-accounting", label: "Legal & Accounting" },
+  { slug: "wholesale-distribution", label: "Wholesale & Distribution" },
+  { slug: "energy-sustainability", label: "Energy & Sustainability" },
+];
+
 export function Categories({ items }: { items?: { name: string; slug: string }[] }) {
-  const available = filterListingCategories(items || []).map((item) => ({
-    label: item.name,
-    icon: categoryIcons[item.slug] || Building2,
-    to: `/businesses?category=${encodeURIComponent(item.slug)}`,
+  const filteredApiCategories = filterListingCategories(items || []);
+  const apiSlugs = new Set(filteredApiCategories.map((item) => item.slug));
+  const visibleCategories = filteredApiCategories.length
+    ? homeCategories.filter((category) => apiSlugs.has(category.slug))
+    : homeCategories;
+  const available = visibleCategories.map((category) => ({
+    ...category,
+    icon: categoryIcons[category.slug] || Building2,
+    to: `/businesses?category=${encodeURIComponent(category.slug)}`,
   }));
+  const desktopCategories = [...available, { slug: "more", label: "More", icon: ArrowRight, to: "/businesses" }];
   if (!available.length) return null;
 
   return (
@@ -44,6 +63,11 @@ export function Categories({ items }: { items?: { name: string; slug: string }[]
               </li>
             ))}
           </ul>
+          <div className="flex justify-end px-3 pb-2">
+            <Link to="/businesses" className={`inline-flex items-center gap-1 rounded-sm text-[11px] font-semibold text-navy-700 underline decoration-navy-700/30 underline-offset-4 hover:decoration-gold-500 ${focusRing}`}>
+              More <ArrowRight className="h-3 w-3" />
+            </Link>
+          </div>
         </Reveal>
 
         {/* Keep the existing category bar unchanged on desktop */}
@@ -56,7 +80,7 @@ export function Categories({ items }: { items?: { name: string; slug: string }[]
               </Link>
             </div>
             <ul className="flex flex-1 flex-wrap content-center gap-x-1 gap-y-1 px-3 py-3 lg:px-4 lg:py-4">
-              {available.map(({ label, to }) => (
+              {desktopCategories.map(({ label, to }) => (
                 <li key={to}>
                   <Link to={to} className={`group relative inline-flex min-h-[44px] items-center rounded-md px-3.5 text-[14px] font-medium text-slate-700 transition-colors hover:bg-navy-50 hover:text-navy-900 motion-reduce:transition-none ${focusRing}`}>
                     {label}

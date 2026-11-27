@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link, Navigate, useParams, useSearchParams } from "react-router-dom";
 import { ArrowRight, Award, BadgeCheck, CalendarPlus, Car, CheckCircle2, Clock, Download, ExternalLink, Heart, Hotel, Lock, MapPin, MessageSquare, Navigation, Star, ThumbsUp, Ticket, Train, Upload, Users, Video } from "lucide-react";
 import { events, fmtEventDate, fmtTime, getEvent, isPast, relatedEvents, type WsEvent } from "../events";
+import { eventApi } from "../api";
+import { toWsEvent, type ApiEvent } from "../eventAdapter";
 import { getStory } from "../stories";
 import { getOpportunity } from "../opportunities";
 import { ProfileShell, Avatar, KV, LockedNote, SideCard, Timeline } from "../components/ProfileShell";
@@ -85,7 +87,13 @@ export default function EventDetails() {
   const { slug = "" } = useParams();
   useTrackView("event:" + slug);
   const [params, setParams] = useSearchParams();
-  const e = getEvent(slug);
+  const [apiEvent, setApiEvent] = useState<ApiEvent | null>(null);
+  const [eventLoading, setEventLoading] = useState(true);
+  const [registrationError, setRegistrationError] = useState("");
+  const [submittingRegistration, setSubmittingRegistration] = useState(false);
+  useEffect(() => { let active = true; setEventLoading(true); eventApi.get(slug).then((item: any) => { if (active) setApiEvent(item?.event ?? item); }).catch(() => { if (active) setApiEvent(null); }).finally(() => { if (active) setEventLoading(false); }); return () => { active = false; }; }, [slug]);
+  const mappedEvent = useMemo(() => apiEvent ? toWsEvent(apiEvent) : undefined, [apiEvent]);
+  const e = mappedEvent ?? getEvent(slug);
   const user = useStore((s) => s.user);
   const plan = useStore((s) => s.membership.plan);
   const reg = useStore((s) => registrationFor(s, slug));
@@ -111,8 +119,11 @@ export default function EventDetails() {
   // post-event feedback prompt
   useEffect(() => { if (e && isPast(e) && reg && !fb) { const t = setTimeout(() => setFbOpen(true), 1200); return () => clearTimeout(t); } }, [e, reg, fb]);
 
+  const [rating, setRating] = useState(0);
+  const [review, setReview] = useState("");
+  const [photos, setPhotos] = useState<string[]>([]);
   const related = useMemo(() => (e ? relatedEvents(e) : []), [e]);
-  if (!e) return <Navigate to="/events" replace />;
+  if (!e) return eventLoading ? <div className="mx-auto max-w-5xl px-4 py-20 text-center text-slate-500">Loading event…</div> : <Navigate to="/events" replace />;
 
   const past = isPast(e);
   const locked = !!e.memberOnly && planRank[plan] < planRank.premium;
@@ -120,14 +131,33 @@ export default function EventDetails() {
   const story = e.relatedStory ? getStory(e.relatedStory) : undefined;
   const opp = e.relatedOpportunity ? getOpportunity(e.relatedOpportunity) : undefined;
 
-  const submitReg = (ev: FormEvent) => {
+  const submitReg = async (ev: FormEvent) => {
     ev.preventDefault();
+    setRegistrationError("");
+    if (apiEvent?.id) {
+      setSubmittingRegistration(true);
+      try {
+        const checkout: any = await eventApi.register(apiEvent.id, { name: f.name, email: f.email });
+        const result = checkout?.data ?? checkout;
+        const registration = result?.registration ?? {};
+        if (result?.type === "checkout") {
+          const order = result.order;
+          if (!(window as any).Razorpay) await new Promise<void>((resolve, reject) => { const script = document.createElement("script"); script.src = "https://checkout.razorpay.com/v1/checkout.js"; script.onload = () => resolve(); script.onerror = () => reject(new Error("Could not load Razorpay checkout.")); document.body.appendChild(script); });
+          const razorpay = new (window as any).Razorpay({ key: order.keyId, amount: order.amount, currency: order.currency, name: "WS Hub", description: e.title, order_id: order.id, prefill: order.prefill, handler: async (payment: any) => {
+            try { const verified: any = await eventApi.verify({ razorpay_order_id: payment.razorpay_order_id, razorpay_payment_id: payment.razorpay_payment_id, razorpay_signature: payment.razorpay_signature }); const verifiedData = verified?.data ?? verified; if (verifiedData.status !== "confirmed") throw new Error("Payment is under review. Your ticket will appear after confirmation."); setDone({ id: registration.id || payment.razorpay_payment_id, eventSlug: e.slug, eventTitle: e.title, name: f.name, email: f.email, phone: f.phone, company: f.company, role: f.role, food: f.food, amount: e.price, code: verifiedData.ticketCode || registration.ticketCode || "WSH-TICKET", status: "Registered", at: new Date().toISOString() }); }
+            catch (error) { setRegistrationError(error instanceof Error ? error.message : "Payment verification failed."); }
+          }, modal: { ondismiss: () => setRegistrationError("Payment was not completed. You can try again.") } });
+          razorpay.open();
+          return;
+        }
+        setDone({ id: registration.id || crypto.randomUUID(), eventSlug: e.slug, eventTitle: e.title, name: f.name, email: f.email, phone: f.phone, company: f.company, role: f.role, food: f.food, amount: 0, code: registration.ticketCode || result.ticket?.code || "WSH-TICKET", status: "Registered", at: new Date().toISOString() });
+      } catch (error) { setRegistrationError(error instanceof Error ? error.message : "Could not register for this event."); }
+      finally { setSubmittingRegistration(false); }
+      return;
+    }
     const r = registerEvent({ eventSlug: e.slug, eventTitle: e.title, name: f.name, email: f.email, phone: f.phone, company: f.company, role: f.role, food: f.food, amount: e.price }, `${e.title} is tomorrow at ${fmtTime(e.start)}. Weather: 29°C, clear. Parking: ${e.venueInfo.parking}. Directions in the event page.`);
     setDone(r);
   };
-  const [rating, setRating] = useState(0);
-  const [review, setReview] = useState("");
-  const [photos, setPhotos] = useState<string[]>([]);
   const submitFb = (ev: FormEvent) => { ev.preventDefault(); submitFeedback(e.slug, rating, review, photos); setFbOpen(false); };
 
   const postQ = (ev: FormEvent) => {
@@ -312,10 +342,11 @@ export default function EventDetails() {
                 <div className="rounded-lg border border-line bg-slate-50 p-4">
                   <div className="flex items-center justify-between text-[13px]"><span className="font-semibold text-navy-900">Payment</span><span className="font-black text-navy-900">₹{e.price}</span></div>
                   <div className="mt-2"><ChoiceGroup options={[...payMethods]} value={f.pay} onChange={(v) => setF({ ...f, pay: v })} name="Payment" /></div>
-                  <p className="mt-2 text-[11px] text-slate-500">Demo checkout — no real payment is taken. Refund policy in FAQ.</p>
+                  <p className="mt-2 text-[11px] text-slate-500">Secure payment is processed by Razorpay. Your ticket is issued after payment is verified.</p>
                 </div>
               )}
-              <PrimaryBtn>{e.price ? `Pay ₹${e.price} & Confirm` : "Confirm Registration"}</PrimaryBtn>
+              {registrationError && <p role="alert" className="rounded-md bg-red-50 p-2.5 text-[12px] text-red-700">{registrationError}</p>}
+              <PrimaryBtn disabled={submittingRegistration}>{submittingRegistration ? "Processing…" : e.price ? `Pay ₹${e.price} & Confirm` : "Confirm Registration"}</PrimaryBtn>
               <p className="text-center text-[11px] text-slate-500">A confirmation with your QR pass will be sent to your email.</p>
             </form>
           )}

@@ -6,7 +6,7 @@ import { FeaturedBusinesses, FeaturedStartups } from "../components/Featured";
 import { LatestStories, UpcomingEvents } from "../components/EventsStories";
 import { Opportunities, TrendingBusinesses } from "../components/OpportunitiesTrending";
 import { CTA } from "../components/CTA";
-import { homeApi } from "../api";
+import { eventApi, homeApi } from "../api";
 import { Shimmer } from "../components/ui/Shimmer";
 
 /* Loading state mirrors the real layout, so nothing jumps when data arrives */
@@ -53,6 +53,7 @@ export default function Home() {
   const [home, setHome] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
+  const [upcomingEvents, setUpcomingEvents] = useState<any[]>([]);
 
   useEffect(() => {
     document.title = "WS Hub — Warangal’s Business & Startup Ecosystem";
@@ -74,6 +75,17 @@ export default function Home() {
     return () => {
       active = false;
     };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    eventApi.list(1, 30).then((result: any) => {
+      const rows = Array.isArray(result) ? result : result?.data;
+      if (active && Array.isArray(rows)) {
+        setUpcomingEvents(rows.map((event: any) => ({ ...event, start_date: event.start_at, venue: event.location })));
+      }
+    }).catch(() => { if (active) setUpcomingEvents([]); });
+    return () => { active = false; };
   }, []);
 
   return (
@@ -102,7 +114,7 @@ export default function Home() {
             </section>
 
             <section className="mt-14 grid gap-10 lg:mt-16 lg:grid-cols-2 lg:gap-8 xl:gap-10" aria-label="Events and stories">
-              <UpcomingEvents items={home?.events ?? home?.upcomingEvents} />
+              <UpcomingEvents items={upcomingEvents.length ? upcomingEvents : home?.events ?? home?.upcomingEvents} />
               <LatestStories items={home?.stories ?? home?.latestStories} />
             </section>
 

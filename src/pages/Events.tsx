@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { BadgeCheck, CalendarPlus, Clock, Eye, Heart, Lock, MapPin, Ticket, Video } from "lucide-react";
 import { dayParts, eventIndustries, eventLocations, eventOrganizers, events, eventTypes, fmtEventDate, fmtTime, isPast, type WsEvent } from "../events";
@@ -9,6 +9,8 @@ import { Avatar } from "../components/ProfileShell";
 import { registrationFor, useStore } from "../store";
 import { planRank } from "../membership";
 import { cn } from "../utils/cn";
+import { eventApi } from "../api";
+import { toWsEvent, type ApiEvent } from "../eventAdapter";
 
 const filters = [
   { key: "type", label: "Event Type", type: "select" as const, options: eventTypes, placeholder: "All Types" },
@@ -121,6 +123,15 @@ export function EventCard({ e, view = "list" }: { e: WsEvent; view?: "grid" | "l
 }
 
 export default function Events() {
+  const [items, setItems] = useState<WsEvent[]>(events);
+  useEffect(() => {
+    let active = true;
+    eventApi.list(1, 100).then((result: any) => {
+      const rows = Array.isArray(result) ? result : result?.data;
+      if (active && Array.isArray(rows)) setItems(rows.map((item: ApiEvent) => toWsEvent(item)));
+    }).catch(() => { /* Keep the directory usable when the API is offline. */ });
+    return () => { active = false; };
+  }, []);
   return (
     <DirectoryPage<WsEvent>
       entity="Events" singular="Event" breadcrumb="Events"
@@ -130,7 +141,7 @@ export default function Events() {
       quickFilters={[{ label: "Today", params: { when: "Today" } }, { label: "This Week", params: { when: "This Week" } }, { label: "This Month", params: { when: "This Month" } }, { label: "Free", params: { price: "Free" } }, { label: "Paid", params: { price: "Paid" } }, { label: "Networking", params: { type: "Networking" } }, { label: "Meetups", params: { type: "Meetup" } }, { label: "Pitch", params: { type: "Pitch" } }, { label: "Workshops", params: { type: "Workshop" } }, { label: "Hackathons", params: { type: "Hackathon" } }, { label: "Investor Meet", params: { type: "Investor Meet" } }, { label: "Conferences", params: { type: "Conference" } }, { label: "Past", params: { when: "Past Events" } }]}
       filters={filters}
       sorts={[{ value: "soon", label: "Upcoming Soon" }, { value: "popular", label: "Most Popular" }, { value: "price", label: "Price: Low to High" }, { value: "seats", label: "Few Seats Left" }]}
-      items={[]} match={match} sort={sortFn} keyOf={(e) => e.slug} renderCard={(e, v) => <EventCard e={e} view={v} />} pageSize={5}
+      items={items} match={match} sort={sortFn} keyOf={(e) => e.slug} renderCard={(e, v) => <EventCard e={e} view={v} />} pageSize={5}
       cta={{ title: "Hosting an event?", text: "Publish your meetup, workshop or conference to 3,200+ members and manage registrations, QR check-in and certificates.", button: "Host an Event", to: "/dashboard?tab=events", icon: <CalendarPlus className="h-7 w-7" strokeWidth={1.6} /> }}
       banner={{ title: "Learn. Network.", highlight: "Build.", text: "Warangal's calendar of founder meetups, investor connects and workshops.", image: "/images/cta-bg.jpg" }}
       emptyHint="No events match. Try 'This Month' or clear the date filter to see everything upcoming."

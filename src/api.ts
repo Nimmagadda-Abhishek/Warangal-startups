@@ -204,6 +204,18 @@ export const paymentApi = {
   subscription: (businessId: string) => apiRequest<any>(`/api/payments/subscription/${encodeURIComponent(businessId)}`),
 };
 
+export const eventApi = {
+  list: (page = 1, limit = 30, q = "") => apiRequest<any>(`/api/events?page=${page}&limit=${limit}${q ? `&q=${encodeURIComponent(q)}` : ""}`, { auth: false }),
+  get: (idOrSlug: string) => apiRequest<any>(`/api/events/${encodeURIComponent(idOrSlug)}`, { auth: false }),
+  create: (body: FormData) => apiRequest<any>("/api/events", { method: "POST", body }),
+  hosted: () => apiRequest<any>("/api/events/mine/hosted"),
+  myTickets: () => apiRequest<any>("/api/events/mine/tickets"),
+  organizerRegistrations: () => apiRequest<any>("/api/events/mine/registrations"),
+  checkIn: (registrationId: string) => apiRequest<any>(`/api/events/mine/registrations/${encodeURIComponent(registrationId)}/check-in`, { method: "POST", body: "{}" }),
+  register: (eventId: string, body: { name: string; email: string }) => apiRequest<any>(`/api/events/${encodeURIComponent(eventId)}/register`, { method: "POST", body: JSON.stringify(body) }),
+  verify: (body: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => apiRequest<any>("/api/events/registrations/verify", { method: "POST", body: JSON.stringify(body) }),
+};
+
 export const adminApi = {
   stats: () => apiRequest<any>("/api/admin/stats"),
   homepageFeaturedOrder: () => apiRequest<{ order: "latest" | "rating" }>("/api/admin/settings/homepage-featured-order"),

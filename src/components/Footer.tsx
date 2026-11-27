@@ -88,7 +88,7 @@ export function Footer({ onSubscribe, onChatOpen }: Props) {
 
   return (
     <footer className="relative border-t border-line bg-white">
-      <div className="mx-auto max-w-[1280px] px-4 pb-8 pt-14 sm:px-6 lg:px-8 lg:pt-16">
+      <div className="mx-auto max-w-[1280px] px-4 pb-24 pt-14 sm:px-6 lg:px-8 lg:pb-8 lg:pt-16">
         <Reveal className="grid gap-12 lg:grid-cols-[1.5fr_repeat(4,minmax(0,1fr))] lg:gap-8">
           {/* Brand */}
           <div className="max-w-[340px]">

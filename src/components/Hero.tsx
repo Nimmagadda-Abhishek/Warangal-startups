@@ -58,18 +58,15 @@ export function Hero() {
       </div>
 
       <div className="relative mx-auto max-w-[1280px] px-4 pb-16 pt-4">
-        <p className="hero-in text-[12.5px] font-semibold tracking-wide text-white/80" style={{ animationDelay: "0ms" }}>
-          Warangal Startups Hub
-        </p>
-        <div className="mt-8 max-w-[640px]">
+        <div className="mt-2 max-w-[640px]">
           <p className="hero-in text-[10px] font-bold uppercase tracking-[0.24em] text-gold-400" style={{ animationDelay: "80ms" }}>
-            Connect <span className="mx-1 text-gold-400/80">•</span> Collaborate <span className="mx-1 text-gold-400/80">•</span> Grow
+            Connect <span className="mx-1.5 text-gold-400/80">•</span> Collaborate <span className="mx-1.5 text-gold-400/80">•</span> Grow
           </p>
           <h1 id="mobile-hero-title" className="hero-in mt-2 text-[56px] font-black leading-[0.95] tracking-tight" style={{ animationDelay: "160ms" }}>
             WS <span className="text-gold-500">Hub</span>
           </h1>
-          <h2 className="hero-in mt-3 text-[20px] font-bold leading-snug" style={{ animationDelay: "240ms" }}>
-            Warangal’s Directories Ecosystem
+          <h2 className="hero-in mt-3 text-[22px] font-bold leading-snug sm:text-[26px]" style={{ animationDelay: "240ms" }}>
+            Warangal’s Business & Startup Ecosystem
           </h2>
           <p className="hero-in mt-3 text-[14px] leading-relaxed text-white/90" style={{ animationDelay: "320ms" }}>
             Discover businesses. Find startups. Meet founders. Explore opportunities. Connect and grow.
@@ -91,7 +88,7 @@ export function Hero() {
               type="search"
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Search businesses, startups, founders..."
+              placeholder="Search businesses, startups, founders, products or services..."
               className="h-12 min-w-0 flex-1 bg-transparent text-[12px] text-ink placeholder:text-slate-400 focus:outline-none"
             />
             <button type="submit" className="shrink-0 bg-gold-500 px-3.5 text-[12px] font-semibold text-navy-900 transition-colors hover:bg-gold-400">Search</button>
@@ -120,33 +117,40 @@ export function Hero() {
 
       <div className="relative mx-auto flex max-w-[1280px] flex-col px-4 pb-20 pt-16 sm:px-6 sm:pt-20 lg:min-h-[600px] lg:justify-center lg:px-8 lg:pb-28 lg:pt-24">
         <div className="max-w-[660px]">
+          <p className="hero-in mb-2 text-[11px] font-bold uppercase tracking-[0.32em] text-gold-400" style={{ animationDelay: "80ms" }}>
+            Connect <span className="mx-1.5 text-gold-400/80">•</span> Collaborate <span className="mx-1.5 text-gold-400/80">•</span> Grow
+          </p>
           <h1
             id="hero-title"
-            className="hero-in font-serif text-[40px] font-medium leading-[1.08] tracking-[-0.015em] text-white sm:text-[52px] lg:text-[60px]"
-            style={{ animationDelay: "0ms" }}
+            className="hero-in text-[64px] font-black leading-[0.95] tracking-tight text-white sm:text-[80px] lg:text-[92px]"
+            style={{ animationDelay: "160ms" }}
           >
-            Find the businesses, startups and founders building Warangal.
+            WS <span className="text-gold-500">Hub</span>
           </h1>
 
           <p
-            className="hero-in mt-5 max-w-[540px] text-[16px] leading-[1.65] text-white/85 sm:text-[17px]"
-            style={{ animationDelay: "120ms" }}
+            className="hero-in mt-3 max-w-[520px] text-[22px] font-bold leading-snug text-white sm:text-[26px] lg:text-[27px]"
+            style={{ animationDelay: "240ms" }}
           >
-            Discover businesses. Find startups. Meet founders. Explore events, jobs, offers & opportunities. Connect and grow.
+            Warangal’s Business & Startup Ecosystem
           </p>
 
-          <div className="hero-in" style={{ animationDelay: "240ms" }}>
+          <p className="hero-in mt-3 max-w-[520px] text-[15px] leading-relaxed text-white/90 sm:text-base" style={{ animationDelay: "320ms" }}>
+            Discover businesses. Find startups. Meet founders. Explore opportunities. Connect and grow.
+          </p>
+
+          <div className="hero-in" style={{ animationDelay: "400ms" }}>
             {/* Search */}
             <form
               role="search"
-              className="mt-8 flex flex-col overflow-hidden rounded-lg bg-white shadow-[0_18px_44px_-18px_rgba(0,0,0,0.65)] focus-within:ring-2 focus-within:ring-gold-400 sm:flex-row sm:items-stretch"
+              className="mt-6 flex overflow-hidden rounded-lg bg-white shadow-[0_14px_36px_-14px_rgba(0,0,0,0.6)] focus-within:ring-2 focus-within:ring-gold-400"
               onSubmit={(e) => {
                 e.preventDefault();
                 const term = q.trim();
                 navigate(term ? `${scope}?q=${encodeURIComponent(term)}` : scope);
               }}
             >
-              <div className="relative border-b border-slate-200 sm:w-[158px] sm:shrink-0 sm:border-b-0 sm:border-r">
+              <div className="hidden">
                 <label htmlFor="hero-scope" className="sr-only">
                   Search in
                 </label>
@@ -175,7 +179,7 @@ export function Hero() {
                   type="search"
                   value={q}
                   onChange={(e) => setQ(e.target.value)}
-                  placeholder="Name, product, service or skill"
+                  placeholder="Search businesses, startups, founders, products or services..."
                   autoComplete="off"
                   className="h-12 min-w-0 flex-1 bg-transparent px-3 text-[14px] text-ink placeholder:text-slate-500 focus:outline-none"
                 />
@@ -190,13 +194,12 @@ export function Hero() {
             </form>
 
             {/* Browse */}
-            <nav aria-label="Browse the directory" className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-1 text-[13.5px]">
-              <span className="text-white/60">Browse</span>
+            <nav aria-label="Browse the directory" className="mt-4 flex flex-wrap gap-2">
               {browse.map((b) => (
                 <Link
                   key={b.to}
                   to={b.to}
-                  className={`inline-flex min-h-[36px] items-center rounded-sm text-white/90 underline decoration-white/25 underline-offset-[6px] transition-colors hover:text-white hover:decoration-gold-400 motion-reduce:transition-none ${focusRing}`}
+                  className="rounded-full border border-white/40 bg-white/10 px-4 py-1.5 text-[11px] font-medium text-white backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-gold-400 hover:bg-gold-500 hover:text-navy-900"
                 >
                   {b.label}
                 </Link>

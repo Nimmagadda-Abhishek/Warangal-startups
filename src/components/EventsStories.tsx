@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { ArrowRight } from "lucide-react";
 import { SectionHeader } from "./SectionHeader";
 import { Reveal } from "./Reveal";
 import { EmptyDataCard } from "./EmptyDataCard";
@@ -30,34 +31,6 @@ function eventPlace(e: any): string {
 /*  Events                                                             */
 /* ------------------------------------------------------------------ */
 
-function EventRow({ e, index }: { e: any; index: number }) {
-  const d = e.date as Date;
-  const to = `/events/${encodeURIComponent(e.slug || e.id)}`;
-  const place = eventPlace(e);
-  return (
-    <Reveal delay={index * 80} as="article" className="card flex min-w-0 items-stretch gap-4 p-4">
-      {/* Date block */}
-      <div className="flex w-16 shrink-0 flex-col items-center justify-center rounded-md bg-navy-50 py-2 text-navy-900" aria-hidden="true">
-        <span className="text-[13px] font-semibold text-navy-700">{d.toLocaleDateString("en-IN", { month: "short" })}</span>
-        <span className="font-serif text-[30px] leading-none">{d.getDate()}</span>
-      </div>
-
-      <div className="min-w-0 flex-1">
-        <h3 className="text-[16px] font-semibold leading-snug text-navy-900">
-          <Link to={to} className={`rounded-sm hover:underline hover:decoration-gold-500 hover:underline-offset-4 ${focusRing}`}>
-            {e.title || e.name}
-          </Link>
-        </h3>
-        <p className="mt-1 text-[13px] font-medium text-slate-700">
-          <span className="sr-only">Date: </span>
-          {d.toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}, {eventWhen(d)}
-        </p>
-        {place && <p className="mt-0.5 truncate text-[13px] text-slate-600">{place}</p>}
-      </div>
-    </Reveal>
-  );
-}
-
 export function UpcomingEvents({ items }: { items?: any[] }) {
   const startOfToday = new Date();
   startOfToday.setHours(0, 0, 0, 0);
@@ -74,9 +47,26 @@ export function UpcomingEvents({ items }: { items?: any[] }) {
       {upcoming.length === 0 ? (
         <EmptyDataCard title="Welcome — no upcoming events" text="Real events and workshops will appear here." action="Host an event" to="/dashboard?tab=events" />
       ) : (
-        <div className="flex flex-col gap-3">
+        <div className="grid gap-3 sm:grid-cols-3 lg:gap-2.5 xl:gap-3">
           {upcoming.map((e, i) => (
-            <EventRow key={e.slug || e.id || i} e={e} index={i} />
+            <Reveal key={e.slug || e.id || i} delay={i * 90} as="article" className="card group flex min-w-0 flex-col overflow-hidden">
+              <Link to={`/events/${encodeURIComponent(e.slug || e.id)}`} className="relative block aspect-[16/10] overflow-hidden bg-navy-50">
+                <img src={e.banner_url || e.image || "/images/hero.jpg"} alt={e.title || "Event"} loading="lazy" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                <div className="absolute inset-0 bg-gradient-to-t from-navy-950/40 to-transparent" />
+                <time dateTime={e.start_date?.toISOString?.() || e.start_date} className="absolute left-2 top-2 flex flex-col items-center rounded-md bg-white px-2.5 py-1.5 leading-none shadow-md">
+                  <span className="text-[9px] font-bold uppercase tracking-wide text-navy-800">{e.date.toLocaleDateString("en-IN", { month: "short" })}</span>
+                  <span className="mt-0.5 text-[20px] font-black text-navy-900">{e.date.getDate()}</span>
+                </time>
+              </Link>
+              <div className="flex flex-1 flex-col p-3">
+                <h3 className="text-[13px] font-bold leading-snug text-navy-900"><Link to={`/events/${encodeURIComponent(e.slug || e.id)}`} className="hover:underline">{e.title || e.name}</Link></h3>
+                <p className="mt-2 text-[10.5px] text-slate-600">{e.date.toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })} · {eventWhen(e.date)}</p>
+                {(e.venue || e.location) && <p className="mt-1 truncate text-[10.5px] text-slate-600">{eventPlace(e)}</p>}
+                <Link to={`/events/${encodeURIComponent(e.slug || e.id)}`} className="btn-navy mt-3 inline-flex w-full items-center justify-center gap-2 py-2 text-[11.5px]">
+                  View event <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+              </div>
+            </Reveal>
           ))}
         </div>
       )}
