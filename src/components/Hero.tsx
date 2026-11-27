@@ -132,8 +132,7 @@ export function Hero() {
             className="hero-in mt-5 max-w-[540px] text-[16px] leading-[1.65] text-white/85 sm:text-[17px]"
             style={{ animationDelay: "120ms" }}
           >
-            WS Hub is Warangal’s directory of local businesses, startups, founders and investors, with jobs, events and
-            requirements listed alongside.
+            Discover businesses. Find startups. Meet founders. Explore events, jobs, offers & opportunities. Connect and grow.
           </p>
 
           <div className="hero-in" style={{ animationDelay: "240ms" }}>

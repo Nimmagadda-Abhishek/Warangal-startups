@@ -27,7 +27,7 @@ export default function App() {
   return (
     <HashRouter>
       <ScrollToTop />
-      <div className="min-h-screen bg-surface">
+      <div className="min-h-screen overflow-x-clip bg-surface">
         <button
           type="button"
           onClick={() => document.getElementById("main")?.focus()}
