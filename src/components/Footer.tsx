@@ -190,12 +190,12 @@ export function Footer({ onSubscribe, onChatOpen }: Props) {
           <p>
             Developed by{" "}
             <a
-              href="https://abhishek-nimmagadda.vercel.app/"
+              href="https://sozo-innovations.vercel.app/"
               target="_blank"
               rel="noopener noreferrer"
               className={`rounded-sm font-semibold text-navy-700 underline underline-offset-4 hover:text-navy-900 ${focusRing}`}
             >
-              Abhishek Nimmagadda
+              Sozo Innovations
               <span className="sr-only"> (opens in a new tab)</span>
             </a>
           </p>
