@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { Search } from "lucide-react";
 
 /* Same hand-drawn glyph language as the Navbar: one stroke weight, round joins. */
 function SearchGlyph({ className }: { className?: string }) {
@@ -46,7 +47,68 @@ export function Hero() {
   const [scope, setScope] = useState(scopes[0].to);
 
   return (
-    <section className="relative overflow-hidden bg-navy-900 text-white" aria-labelledby="hero-title">
+    <>
+    <section className="relative overflow-hidden bg-navy-900 text-white sm:hidden" aria-labelledby="mobile-hero-title">
+      <div className="absolute inset-0" aria-hidden="true">
+        <div className="absolute inset-y-0 right-0 w-full overflow-hidden">
+          <img src="/images/hero.jpg" alt="" className="ken-burns h-full w-full object-cover object-center" fetchPriority="high" />
+        </div>
+        <div className="absolute inset-0 bg-gradient-to-r from-navy-900 via-navy-900/95 to-navy-900/10" />
+        <div className="absolute inset-0 bg-gradient-to-t from-navy-900/70 via-transparent to-navy-900/40" />
+      </div>
+
+      <div className="relative mx-auto max-w-[1280px] px-4 pb-16 pt-4">
+        <p className="hero-in text-[12.5px] font-semibold tracking-wide text-white/80" style={{ animationDelay: "0ms" }}>
+          Warangal Startups Hub
+        </p>
+        <div className="mt-8 max-w-[640px]">
+          <p className="hero-in text-[10px] font-bold uppercase tracking-[0.24em] text-gold-400" style={{ animationDelay: "80ms" }}>
+            Connect <span className="mx-1 text-gold-400/80">•</span> Collaborate <span className="mx-1 text-gold-400/80">•</span> Grow
+          </p>
+          <h1 id="mobile-hero-title" className="hero-in mt-2 text-[56px] font-black leading-[0.95] tracking-tight" style={{ animationDelay: "160ms" }}>
+            WS <span className="text-gold-500">Hub</span>
+          </h1>
+          <h2 className="hero-in mt-3 text-[20px] font-bold leading-snug" style={{ animationDelay: "240ms" }}>
+            Warangal’s Directories Ecosystem
+          </h2>
+          <p className="hero-in mt-3 text-[14px] leading-relaxed text-white/90" style={{ animationDelay: "320ms" }}>
+            Discover businesses. Find startups. Meet founders. Explore opportunities. Connect and grow.
+          </p>
+
+          <form
+            className="hero-in mt-6 flex min-h-12 overflow-hidden rounded-lg bg-white shadow-[0_14px_36px_-14px_rgba(0,0,0,0.6)] focus-within:ring-2 focus-within:ring-gold-400/80"
+            style={{ animationDelay: "400ms" }}
+            onSubmit={(e) => {
+              e.preventDefault();
+              navigate(`/businesses?q=${encodeURIComponent(q.trim())}`);
+            }}
+            role="search"
+          >
+            <label htmlFor="mobile-hero-search" className="sr-only">Search</label>
+            <span className="flex items-center pl-3 pr-2 text-navy-900"><Search className="h-[18px] w-[18px]" strokeWidth={2.4} /></span>
+            <input
+              id="mobile-hero-search"
+              type="search"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search businesses, startups, founders..."
+              className="h-12 min-w-0 flex-1 bg-transparent text-[12px] text-ink placeholder:text-slate-400 focus:outline-none"
+            />
+            <button type="submit" className="shrink-0 bg-gold-500 px-3.5 text-[12px] font-semibold text-navy-900 transition-colors hover:bg-gold-400">Search</button>
+          </form>
+
+          <nav aria-label="Browse the directory" className="hero-in mt-4 flex flex-wrap gap-2" style={{ animationDelay: "480ms" }}>
+            {browse.map((item) => (
+              <Link key={item.to} to={item.to} className="rounded-full border border-white/40 bg-white/10 px-3 py-1.5 text-[10px] font-medium text-white backdrop-blur-sm transition-colors hover:border-gold-400 hover:bg-gold-500 hover:text-navy-900">
+                {item.label}
+              </Link>
+            ))}
+          </nav>
+        </div>
+      </div>
+    </section>
+
+    <section className="relative hidden overflow-hidden bg-navy-900 text-white sm:block" aria-labelledby="hero-title">
       {/* Photograph, held to the right and faded into the navy */}
       <div className="absolute inset-0" aria-hidden="true">
         <div className="absolute inset-y-0 right-0 w-full md:w-[62%]">
@@ -166,5 +228,6 @@ export function Hero() {
         </figure>
       </div>
     </section>
+    </>
   );
 }

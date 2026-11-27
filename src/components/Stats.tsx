@@ -106,7 +106,7 @@ function MobileStatItem({ stat, target, suffix, start }: { stat: Stat; target: n
 }
 
 export function Stats({ apiStats }: { apiStats?: ApiStats }) {
-  const ref = useRef<HTMLUListElement>(null);
+  const ref = useRef<HTMLDivElement>(null);
   const [start, setStart] = useState(false);
 
   useEffect(() => {
@@ -134,10 +134,10 @@ export function Stats({ apiStats }: { apiStats?: ApiStats }) {
   const odd = items.length % 2 === 1;
 
   return (
-    <section className="mt-3 lg:mt-4" aria-label="Ecosystem statistics">
-      <div className="mx-auto max-w-[1280px] px-4 sm:px-6 lg:px-8">
+    <section className="hidden mt-3 lg:mt-4 lg:block" aria-label="Ecosystem statistics">
+      <div ref={ref} className="mx-auto max-w-[1280px] px-4 sm:px-6 lg:px-8">
         <Reveal delay={100} className="overflow-hidden rounded-xl border border-line bg-white shadow-[0_10px_30px_-18px_rgba(10,28,63,0.3)]">
-          <ul ref={ref} className="grid grid-cols-2 gap-x-2 px-3 py-2 sm:grid-cols-4 lg:hidden">
+          <ul className="grid grid-cols-2 gap-x-2 px-3 py-2 sm:grid-cols-4 lg:hidden">
             {stats.map((stat) => <MobileStatItem key={stat.label} stat={stat} target={stat.fallback} suffix="+" start={start} />)}
           </ul>
           <ul className="hidden grid-cols-7 gap-px bg-line lg:grid">

@@ -1,13 +1,26 @@
-import { Building2 } from "lucide-react";
+import { Factory, Hotel, Landmark, Leaf, Megaphone, Package, Scale, Sprout, Truck, Building2, type LucideIcon } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Reveal } from "./Reveal";
 import { filterListingCategories } from "../businesses";
 
 const focusRing = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-navy-700";
+const categoryIcons: Record<string, LucideIcon> = {
+  "real-estate-construction": Building2,
+  "finance-insurance": Landmark,
+  manufacturing: Factory,
+  "agriculture-farming": Sprout,
+  "logistics-transport": Truck,
+  "travel-hospitality": Hotel,
+  "marketing-media": Megaphone,
+  "legal-accounting": Scale,
+  "wholesale-distribution": Package,
+  "energy-sustainability": Leaf,
+};
 
 export function Categories({ items }: { items?: { name: string; slug: string }[] }) {
   const available = filterListingCategories(items || []).map((item) => ({
     label: item.name,
+    icon: categoryIcons[item.slug] || Building2,
     to: `/businesses?category=${encodeURIComponent(item.slug)}`,
   }));
   if (!available.length) return null;
@@ -17,14 +30,14 @@ export function Categories({ items }: { items?: { name: string; slug: string }[]
       <div className="mx-auto max-w-[1280px] px-4 sm:px-6 lg:px-8">
         {/* Compact icon grid for mobile and tablet widths */}
         <Reveal className="rounded-xl border border-line bg-white shadow-[0_18px_40px_-20px_rgba(10,28,63,0.35)] lg:hidden">
-          <ul className="hide-scrollbar grid grid-cols-4 gap-y-2 px-2 py-3 sm:grid-cols-7">
-            {available.map(({ label, to }) => (
+          <ul className="grid grid-cols-5 grid-rows-2 gap-y-1 px-1.5 py-2 sm:grid-cols-7 sm:px-2 sm:py-3">
+            {available.map(({ label, icon: Icon, to }) => (
               <li key={label}>
-                <Link to={to} className={`group flex h-full min-h-[68px] flex-col items-center justify-start gap-1.5 rounded-lg px-1 py-2 text-center transition-colors hover:bg-navy-50 ${focusRing}`}>
-                  <span className="flex h-8 w-8 items-center justify-center text-navy-700 transition-all duration-300 group-hover:-translate-y-0.5 group-hover:text-navy-600 motion-reduce:transition-none">
-                    <Building2 className="h-[26px] w-[26px]" strokeWidth={1.6} />
+                <Link to={to} className={`group flex h-[76px] flex-col items-center justify-center gap-1 rounded-lg px-0.5 text-center transition-colors hover:bg-navy-50 sm:h-[82px] ${focusRing}`}>
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-navy-50 text-navy-700 transition-colors group-hover:bg-gold-100 group-hover:text-navy-800">
+                    <Icon className="h-5 w-5" strokeWidth={1.75} />
                   </span>
-                  <span className="max-w-[72px] text-[10px] font-medium leading-tight text-slate-700 group-hover:text-navy-800 sm:max-w-[96px] sm:text-[11px]">
+                  <span className="line-clamp-2 max-w-[64px] text-[9px] font-medium leading-tight text-slate-700 group-hover:text-navy-800 sm:max-w-[90px] sm:text-[10px]">
                     {label}
                   </span>
                 </Link>

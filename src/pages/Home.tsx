@@ -25,7 +25,7 @@ function HomeSkeleton() {
       </div>
 
       {/* Stats strip */}
-      <div className="mx-auto mt-3 max-w-[1280px] px-4 sm:px-6 lg:mt-4 lg:px-8">
+      <div className="mx-auto mt-3 hidden max-w-[1280px] px-4 sm:px-6 lg:mt-4 lg:block lg:px-8">
         <Shimmer className="h-[330px] rounded-xl lg:h-[96px]" />
       </div>
 
